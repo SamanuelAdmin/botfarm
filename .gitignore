@@ -1,0 +1,16 @@
+# SQLite databases - NEVER commit these to version control
+*.db
+*.sqlite
+*.sqlite3
+crudadmin_data/
+
+# Also exclude database journals
+*.db-journal
+*.sqlite3-journal
+
+.venv/
+venv/
+.env
+.env/
+__pycache__/
+*/__pycache__/
