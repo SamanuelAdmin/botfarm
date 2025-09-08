@@ -1,12 +1,8 @@
 from services.adb_manager import AdbManager, AdbClient, Dot
 from services.parsers import ScreenDumpParser
 from services.ai_manager import AiManager
-from views import MainApp
-import uvicorn
 import json
 
-from services.accounts_manager import AccountsManager
-from services.insta_api.api_account_manager import ApiAccountManager
 
 
 def actionScript(adb: AdbClient, ai: AiManager, action):
@@ -59,7 +55,7 @@ def main():
     ai = AiManager(apiKey='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')
     adb = m.loadSerial('98896a374256375548')
     actionScript(
-        adb, ai, 'open instagram site in browser'
+        adb, ai, 'open browser and then open page instagram.com'
     )
     # adb.tap(Dot(300, 600))
 

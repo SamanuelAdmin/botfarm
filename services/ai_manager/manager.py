@@ -13,8 +13,12 @@ class Manager:
         )
         self._model = model
 
-    def loadTools(self, filename='meta/tools.json'):
-        with open( 'tools.json', 'r' ) as file:
+    def loadTools(self, filename='tools.json'):
+        if __file__ != "__main__":
+            filedir = os.path.dirname(__file__)
+            filename = os.path.join(filedir, filename)
+
+        with open( filename, 'r' ) as file:
             return json.loads(file.read())
 
     def request(self, prompt):
