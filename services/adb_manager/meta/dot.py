@@ -20,7 +20,7 @@ class Dot:
 
     def __str__(self): return f"{self._x} {self._y}"
 
-    def make_random(self, l: int=20):
+    def make_random(self, l: int=10):
         self._x += random.randint(-l, l)
         self._y += random.randint(-l, l)
         return self
