@@ -1,0 +1,55 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "tap",
+      "description": "Simulate a single user tap (click) on the screen at specific coordinates (x, y). Use this ONLY when you need to press a button, open an app, select an item, or interact with any visible UI element that requires a tap.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": { "type": "integer", "description": "X coordinate of the tap position on the screen" },
+          "y": { "type": "integer", "description": "Y coordinate of the tap position on the screen" }
+        },
+        "required": ["x", "y"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "swipe",
+      "description": "Simulate a swipe gesture on the screen. The swipe starts at coordinates (x1, y1) and ends at (x2, y2). Use this ONLY for scrolling (up, down, left, right) or dragging content on the screen.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x1": { "type": "integer", "description": "X coordinate where the swipe starts" },
+          "y1": { "type": "integer", "description": "Y coordinate where the swipe starts" },
+          "x2": { "type": "integer", "description": "X coordinate where the swipe ends" },
+          "y2": { "type": "integer", "description": "Y coordinate where the swipe ends" }
+        },
+        "required": ["x1", "y1", "x2", "y2"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "write",
+      "description": "Simulate typing text into a text field. Use this ONLY after tapping a text input field and when you need to enter user text (such as a message, username, or search query).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "description": "The exact text to be typed into the active input field" }
+        },
+        "required": ["text"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "done",
+      "description": "Indicate that the task or action sequence is fully completed. Use this ONLY when there is nothing more to do and the final goal has been reached."
+    }
+  }
+]

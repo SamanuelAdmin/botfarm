@@ -23,6 +23,7 @@ class Dot:
     def make_random(self, l: int=20):
         self._x += random.randint(-l, l)
         self._y += random.randint(-l, l)
+        return self
 
     @property
     def x(self) -> int: return self._x

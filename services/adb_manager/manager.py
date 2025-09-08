@@ -2,7 +2,6 @@ import random
 import shlex
 import time
 import json
-from bs4 import BeautifulSoup as Soup
 
 from .api_connector import ApiConnector
 from .exceptions import *
