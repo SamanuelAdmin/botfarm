@@ -24,3 +24,11 @@ class IncorrectStatusException(Exception):
 
     def __str__(self):
         return f'Got incorrect status: {self.json.get("status")}. \nJSON: \n{self.json}'
+
+
+class FileDownloadException(Exception):
+    def __init__(self, filePath: str):
+        self.filePath = filePath
+
+    def __str__(self):
+        return f'Error downloading file: {self.filePath}'

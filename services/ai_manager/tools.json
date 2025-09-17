@@ -7,8 +7,14 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "x": { "type": "integer", "description": "X coordinate of the tap position on the screen" },
-          "y": { "type": "integer", "description": "Y coordinate of the tap position on the screen" }
+          "x": {
+            "type": "integer",
+            "description": "X coordinate of the tap position on the screen"
+          },
+          "y": {
+            "type": "integer",
+            "description": "Y coordinate of the tap position on the screen"
+          }
         },
         "required": ["x", "y"]
       }
@@ -39,7 +45,10 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "text": { "type": "string", "description": "The exact text to be typed into the active input field" }
+          "text": {
+            "type": "string",
+            "description": "The exact text to be typed into the active input field"
+          }
         },
         "required": ["text"]
       }
@@ -49,7 +58,12 @@
     "type": "function",
     "function": {
       "name": "done",
-      "description": "Indicate that the task or action sequence is fully completed. Use this ONLY when there is nothing more to do and the final goal has been reached."
+      "description": "Indicate that the task or action sequence is fully completed. Use this ONLY when there is nothing more to do and the final goal has been reached.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
     }
   }
 ]

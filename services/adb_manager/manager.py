@@ -1,7 +1,9 @@
+import os
 import random
 import shlex
 import time
 import json
+from typing import Optional
 
 from .api_connector import ApiConnector
 from .exceptions import *
@@ -13,6 +15,7 @@ class AdbClient:
             self, connector: ApiConnector,
             serial: str, deviceLinkPattern: str='/device/{}'
     ):
+        self.serial = serial
         self.connector = connector
         self.deviceLink = deviceLinkPattern.format(serial)
 
@@ -30,7 +33,6 @@ class AdbClient:
 
         return response
 
-
     def tap(self, dot: Dot) -> bool:
         return bool(
             self.sendAdbCommand(
@@ -38,15 +40,15 @@ class AdbClient:
             )
         )
 
-    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK=0.6) -> bool:
-        swipeTime = (dotFinish - dotStart) * timeK
+    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK=0.02) -> bool:
+        swipeTime = int((dotFinish - dotStart) * timeK)
         return bool(
             self.sendAdbCommand(
                 f'input swipe {dotStart} {dotFinish} {swipeTime}'
             )
         )
 
-    def text(self, message: str, delayMicros: list=[40, 90]) -> bool:
+    def text(self, message: str, delayMicros: tuple[int]=(40, 90)) -> bool:
         for letter in message:
             match letter:
                 case '"': letter = '\\"'
@@ -68,16 +70,30 @@ class AdbClient:
         if xmlData is None: raise ResultNotFoundException(resp)
         return xmlData[:xmlData.rfind('>')+1]
 
+    def makeScreenshot(self, filepath: str='/sdcard/screen.png') -> bool:
+        return bool(self.sendAdbCommand(f'screencap -p {filepath}'))
 
-    def fastText(self, message: str, delay: list=[0.01, 0.07]) -> bool:
-        # message = message.replace('"', '\\"')\
-        #             .replace(' ', '%s')
 
-        # return self.sendAdbCommand(
-        #     f's="{message}"; min={delay[0]}; max={delay[1]}; ' \
-        #     + '''for ((i=0;i<${#s};i++)); do input text "${s:i:1}"; sleep $(awk -v min=$min -v max=$max 'BEGIN{srand(); print min+rand()*(max-min)}'); done'''
-        # )
+    def downloadFile(self, filename: str='/sdcard/screen.png', downloadDir: Optional[str]=None) -> str|None:
+        filename = self.sendAdbCommand( f'adb_pull {filename}' ).get('result')
+        downloadDir = downloadDir or os.getcwd()
+        fullPath = os.path.join(downloadDir, filename)
 
+        try:
+            fileResponse = self.connector.apiRequest(f'/file/get/{filename}')
+
+            with open(fullPath, 'wb') as file:
+                dataStream = fileResponse.iter_content(chunk_size=8192)
+                for data in dataStream:
+                    file.write(data)
+
+            return fullPath
+        except Exception as e: print(FileDownloadException(fullPath))
+
+        return None
+
+
+    def fastText(self, message: str, delay: tuple[int]=(0.01, 0.07)) -> bool:
         safe_message = shlex.quote(message)
 
         cmd = (
@@ -91,7 +107,7 @@ class AdbClient:
             'done'
         )
 
-        return self.sendAdbCommand(cmd)
+        return bool(self.sendAdbCommand(cmd))
 
 
 class Manager:
@@ -100,23 +116,27 @@ class Manager:
         self.apiConnector = ApiConnector(api)
         self._adbClients = {}
 
-    def getAllSerials(self) -> list:
+    def getAllSerials(self) -> list[str]|list:
         response =  self.apiConnector.apiRequest(
             '/all/all'
         )
+        if type(response) is int: raise IncorrectStatusCodeException(response)
 
         if response.get('status') != True: return []
         return response.get('result') if response.get('result') else []
 
-    def loadAllSerials(self):
+    def loadAllSerials(self) -> None:
         serials = self.getAllSerials()
 
         for serial in serials:
             self._adbClients[serial] = AdbClient(self.apiConnector, serial)
 
-    def getSerial(self, serial: str) -> str:
+    def loadSerial(self, serial: str) -> AdbClient:
+        adbClient = AdbClient(self.apiConnector, serial)
+        self._adbClients[serial] = adbClient
+        return adbClient
+
+    def getClient(self, serial: str) -> AdbClient:
         return self._adbClients.get(serial)
 
-    def loadSerial(self, serial: str) -> AdbClient:
-        return AdbClient(self.apiConnector, serial)
 

@@ -14,3 +14,10 @@ venv/
 .env/
 __pycache__/
 */__pycache__/
+
+# history of AI model requests/responses
+# DO NOT COMMIT
+history/
+.history/
+history/*
+.history/*

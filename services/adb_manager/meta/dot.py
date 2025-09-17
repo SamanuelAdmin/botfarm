@@ -20,9 +20,10 @@ class Dot:
 
     def __str__(self): return f"{self._x} {self._y}"
 
-    def make_random(self, l: int=10):
-        self._x += random.randint(-l, l)
-        self._y += random.randint(-l, l)
+    def make_random(self, l_x: int=10, l_y: int=10):
+        l_x, l_y = abs(l_x), abs(l_y)
+        self._x += random.randint(-l_x, l_x)
+        self._y += random.randint(-l_y, l_y)
         return self
 
     @property

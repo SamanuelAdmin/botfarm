@@ -1,3 +1,4 @@
+import json
 from typing import Any, Optional
 import requests
 
@@ -20,7 +21,7 @@ class ApiConnector:
             headers: Optional[dict[Any, Any]]=None,
             data: Optional[str]=None,
             method='get'
-    ) -> dict[str, Any]|int:
+    ) -> dict[str, Any]|int|Any:
         assert method.lower() in ['get', 'post', 'put', 'delete']
 
         r = requests.request(
@@ -29,5 +30,5 @@ class ApiConnector:
         )
 
         if r.status_code != 200: return r.status_code
-        return r.json()
-
+        try: return r.json()
+        except json.decoder.JSONDecodeError: return r

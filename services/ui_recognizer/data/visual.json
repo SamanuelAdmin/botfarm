@@ -1,0 +1,10 @@
+{
+  "optionsButton": "optionsButton.png",
+  "loginButton": "loginButton.png",
+  "2faCodeField": "2faCodeField.png",
+  "confirmButton": "confirmButton.png",
+  "continueButton": "continueButton.png",
+  "saveButton": "saveButton.png",
+  "logOutButton": "logOutButton.png",
+  "addAccountButton": "addAccountButton.png"
+}

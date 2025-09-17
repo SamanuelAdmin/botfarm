@@ -1,4 +1,7 @@
 import json
+import os
+import sys
+import uuid
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
@@ -35,6 +38,17 @@ class AssistantRecord(HistoryRecord):
     call_id: str = ""
     function_name: str = ""
     args: dict[str, Any] | str = {}
+
+    def __init__(self,
+        call_id: str="", function_name: str="",
+        args: dict[str, Any] | str = {},
+        content: Optional[str] = None
+    ):
+        self.call_id = call_id
+        self.function_name = function_name
+        self.args = args
+        self.content = content or ""
+
 
     @property
     def to_OpenAi(self):
@@ -95,20 +109,41 @@ class ToolRecord(HistoryRecord):
 
 
 class HistoryQueue:
-    def __init__(self, systemMessage: str='You are control manager for phones farm', messagesLimit: int=30):
+    def __init__(self,
+                 systemMessage: str='You are control manager for phones farm',
+                 messagesLimit: int=30, logFile=None
+            ):
         self._history: list[HistoryRecord] = []
         self._systemMessage: str = systemMessage
         self._messagesLimit: int = abs(messagesLimit)
 
+        self.logsFullpath: str = None
+        if __name__ != "__main__":
+            self.logFile = logFile if logFile else uuid.uuid1().hex + '.json'
+            filedir = os.path.join(os.getcwd(), 'history')
+            if not os.path.exists(filedir): os.mkdir(filedir)
+
+            self.logsFullpath = os.path.join(filedir, self.logFile)
+            print(f'Path lo logs file: {self.logsFullpath}')
+
         self.updateHistory(
             SystemRecord( content=self._systemMessage )
         )
+
 
     def updateHistory(self, data: HistoryRecord):
         if len(self._history) >= self._messagesLimit:
             # SYSTEM RECORD PROTECTION! DO NOT TOUCH!
             self._history.pop(1)
         self._history.append(data)
+
+        if self.logsFullpath: self.saveHistory()
+
+    def saveHistory(self):
+        if not self.logsFullpath: return
+
+        with open(self.logsFullpath, 'w') as logfile:
+            logfile.write(json.dumps(self.convertHistoryToOpenAI()))
 
     @property
     def history(self): return self._history
