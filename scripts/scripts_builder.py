@@ -7,9 +7,9 @@ from typing import Optional
 import numpy as np
 import cv2
 
-from services.adb_manager import AdbManager, Dot, AdbClient
+from services.adb_manager import Dot, AdbClient
 from services.ui_recognizer import Recognizer
-from adb_auto import AdbAutoManager
+from services.adb_manager.adb_auto import AdbAutoManager
 
 
 
@@ -96,7 +96,7 @@ def waitUntilTextFind(adb: AdbClient, recognizer, text: str, iter: int=-1) -> bo
 
 
 def swipeUntilFindElement(
-        adb: AdbClient, recognizer: Recognizer,
+        adb: AdbClient, recognizer: Optional[Recognizer] = None,
         text: Optional[str]=None, templateName: Optional[str]=None,
         dumpAttrs: Optional[dict[str, str]]=None, adbAuto: Optional[AdbAutoManager]=None,
         iter=-1 ) -> bool:
@@ -115,7 +115,7 @@ def swipeUntilFindElement(
         if recognitionResult: return True
         smallSwipe(adb)
 
-    return False
+    return False 
 
 
 def waitForDumpElement(adb: AdbClient, adbAuto: AdbAutoManager, elementAttrs: dict[str, str], iter: int=-1) -> bool|list[int]:
@@ -137,3 +137,5 @@ def simpleLog(adb: AdbClient, *logs):
 
 def goToProfilePage(adb: AdbClient, adbAuto: AdbAutoManager) -> bool:
     return adbAuto.clickOnElement(client=adb, elementAttrs={'content-desc': 'Profile'}, randomizK=0.2)
+
+

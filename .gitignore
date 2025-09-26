@@ -21,3 +21,16 @@ history/
 .history/
 history/*
 .history/*
+
+# IDE configs
+.vscode/
+.vscode/*
+.idea/
+.idea/*
+
+# Test folder
+tests/
+tests/*
+
+# Temp files
+screen.png

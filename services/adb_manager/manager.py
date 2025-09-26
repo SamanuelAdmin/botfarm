@@ -40,8 +40,8 @@ class AdbClient:
             )
         )
 
-    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK=0.02) -> bool:
-        swipeTime = int((dotFinish - dotStart) * timeK)
+    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK: float=0.02, swipeTime: Optional[float]=None) -> bool:
+        swipeTime = swipeTime * 1000 if swipeTime else int((dotFinish - dotStart) * timeK)
         return bool(
             self.sendAdbCommand(
                 f'input swipe {dotStart} {dotFinish} {swipeTime}'
@@ -108,6 +108,22 @@ class AdbClient:
         )
 
         return bool(self.sendAdbCommand(cmd))
+
+    def deleteText(self, length: int=1, fast: bool=False, sec: float=0.5) -> bool:
+        self.sendAdbCommand('input keyevent KEYCODE_MOVE_END')
+
+        if not fast:
+            for _ in range(length):
+                if not bool(self.sendAdbCommand(f'input keyevent KEYCODE_DEL')):
+                    return False
+        else:
+            if not bool(
+                    self.sendAdbCommand(
+                        'input keyevent KEYCODE_DEL --longpress $(printf "KEYCODE_DEL %.0s" {1..' + str(sec * 1000) + '})'
+                    )
+                ): return False
+
+        return True
 
 
 class Manager:

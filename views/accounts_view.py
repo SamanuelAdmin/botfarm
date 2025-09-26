@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from db.data.account import *
 from meta.exceptions import AccountNotFoundException, AccountNotFoundHttpException
 
-from services.accounts_manager import AccountsManager
+from services.db_services.accounts_manager import AccountsManager
 
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])

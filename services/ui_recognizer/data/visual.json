@@ -6,5 +6,6 @@
   "continueButton": "continueButton.png",
   "saveButton": "saveButton.png",
   "logOutButton": "logOutButton.png",
-  "addAccountButton": "addAccountButton.png"
+  "addAccountButton": "addAccountButton.png",
+  "editProfileButton": "editProfileButton.png"
 }
