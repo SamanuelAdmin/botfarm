@@ -1,6 +1,6 @@
 import os
 
-from services.insta_api.fa2 import get2FACode
+from services.fa2 import get2FACode
 from scripts.scripts_builder import *
 
 
