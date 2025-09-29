@@ -16,3 +16,6 @@ class AccountNotFoundHttpException(HTTPException):
         super().__init__(self.status_code)
 
     def __str__(self): return f'[HTTP] Account with id {self.account_id} not found.'
+
+
+class IncorrectDataFormatException(Exception): pass

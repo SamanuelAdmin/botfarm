@@ -1,27 +1,42 @@
 from typing import Generator
+
+from repository import Repository
+
 from db.data.account import Account
 from db.data.connected_email import ConnectedEmail
 from db.data.device_id import DeviceID
-from meta.exceptions import AccountNotFoundException
-from repository.accounts import Repository
+from meta.exceptions import AccountNotFoundException, IncorrectDataFormatException
+
 
 
 class AccountsManager:
+    """
+        The only one possible way to work with database accounts.
+        Must-have layer between core/main program and repository.
+    """
+
     def __init__(self):
-        self.accountRepository = Repository()
+        self.repository = Repository()
 
-    def loadFromDump(self, dump: str):
-        creds, user_agent, device_ids, cookies, connected_emails = filter(
-            lambda x: x, dump.split('|')
-        )
+    def loadFromDump(self, dump: str) -> tuple[Account, DeviceID, list[ConnectedEmail]]:
+        parts = dump.split('|')
+        if len(parts) != 5: raise IncorrectDataFormatException()
 
-        login, password, key = creds.split(':')
-        device_id = DeviceID(
-            *device_ids.split(';')
-        )
-        cookies = {
-            line.split('=')[0]: '='.join(line.split('=')[1:]) for line in cookies.split(';')
-        }
+        try:
+            creds, user_agent, device_ids, cookies, connected_emails = filter(
+                lambda x: x, dump.split('|')
+            )
+
+            login, password, key = creds.split(':')
+            device_id = DeviceID(
+                *device_ids.split(';')
+            )
+
+            cookies = {
+                line.split('=')[0]: '='.join(line.split('=')[1:]) for line in cookies.split(';')
+            }
+        except: raise IncorrectDataFormatException()
+
         connected_emails = [
             ConnectedEmail( *line.split(':') ) for line in connected_emails.split(';')
         ]
@@ -34,22 +49,25 @@ class AccountsManager:
                 connected_emails = connected_emails
             )
 
-        self.accountRepository.create(account, device_id, connected_emails)
+        self.repository.create(account, device_id, connected_emails)
         return account, device_id, connected_emails
 
-    def getAccountById(self, id: int) -> tuple[Account, DeviceID, list[ConnectedEmail]]:
-        account = self.accountRepository.read(Account, id)
+
+    def getAccountById(self, _id: int) -> tuple[Account, DeviceID, list[ConnectedEmail]]:
+        account = self.repository.read(Account, _id)
         if account is None:
-            raise AccountNotFoundException(id)
+            raise AccountNotFoundException(_id)
 
         return account, account.device_id, account.connected_emails
 
 
     def getAllAccounts(self) -> Generator[Account]:
-        for account in self.accountRepository.readAllAccounts(): yield account
+        for account in self.repository.readAll(Account): yield account
 
-    def deleteAccountById(self, id: int):
-        self.accountRepository.delete(id)
 
-    def updateAccountById(self, id: int, **kwargs) -> None:
-        self.accountRepository.update(Account, id, **kwargs)
+    def deleteAccountById(self, _id: int):
+        self.repository.delete(Account, _id)
+
+
+    def updateAccountById(self, _id: int, **kwargs) -> None:
+        self.repository.update(Account, _id, **kwargs)
