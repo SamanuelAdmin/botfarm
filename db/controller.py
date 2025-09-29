@@ -11,7 +11,7 @@ class DatabaseController:
     __metaclass__ = Singleton
 
     def __init__(self, filename: str="database.db"):
-        self.connector = DatabaseConnector()
+        self.connector = DatabaseConnector(filename)
         self.connector.create_all()
         self.session = self.connector.session
 

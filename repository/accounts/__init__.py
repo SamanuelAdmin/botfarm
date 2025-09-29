@@ -1,3 +1,3 @@
 from .accounts_repository import *
 
-AccountsService = AccountsRepository
+AccountsService = Repository

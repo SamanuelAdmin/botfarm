@@ -11,8 +11,8 @@ class DatabaseConnector:
     __metaclass__ = Singleton
 
     def __init__(self, filename="database.db", echo=False):
-        self._engine = create_engine("sqlite+pysqlite:///database.db", echo=echo)
-        self._asyncEngine = create_async_engine("sqlite+aiosqlite:///database.db", echo=echo)
+        self._engine = create_engine(f"sqlite+pysqlite:///{filename}", echo=echo)
+        self._asyncEngine = create_async_engine(f"sqlite+aiosqlite:///{filename}", echo=echo)
 
         self._SessionMaker = sessionmaker(bind=self._engine)
         self._session = self._SessionMaker()

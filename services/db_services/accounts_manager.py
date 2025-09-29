@@ -3,12 +3,12 @@ from db.data.account import Account
 from db.data.connected_email import ConnectedEmail
 from db.data.device_id import DeviceID
 from meta.exceptions import AccountNotFoundException
-from repository.accounts import AccountsRepository
+from repository.accounts import Repository
 
 
 class AccountsManager:
     def __init__(self):
-        self.accountRepository = AccountsRepository()
+        self.accountRepository = Repository()
 
     def loadFromDump(self, dump: str):
         creds, user_agent, device_ids, cookies, connected_emails = filter(

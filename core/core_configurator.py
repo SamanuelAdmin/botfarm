@@ -3,4 +3,4 @@ from dataclasses import dataclass
 
 @dataclass
 class CoreConfigurator:
-    pass
+    max_gsq_units: int

@@ -13,17 +13,13 @@ class NotFoundException(Exception):
 
 
 class TaskAlreadyStarted(TaskError):
-    def __init__(self, task: ITask):
-        super().__init__(task)
-
-    def __str__(self): return f'Task #{self.task.taskId} already started.'
+    def __str__(self):
+        return f'Task #{self.task.taskId} already started.'
 
 
 class TaskNotStarted(TaskError):
-    def __init__(self, task: ITask):
-        super().__init__(task)
-
-    def __str__(self): return f'Task #{self.task.taskId} is not started.'
+    def __str__(self):
+        return f'Task #{self.task.taskId} is not started.'
 
 
 class AdbManagerNotFound(Exception):
@@ -32,9 +28,16 @@ class AdbManagerNotFound(Exception):
 
 
 class CoreIsNotInitialized(Exception):
-    def __str__(self): return 'Core not initialized. Run .load method before starting.'
+    def __str__(self): return 'Core is not initialized. Run .load method before starting.'
+
+class CoreIsNotConfigured(Exception):
+    def __str__(self): return 'Core is not configured. Run .configure method before starting.'
 
 
 class UnableToDo(Exception):
     def __init__(self, info: str):
         super().__init__(info)
+
+
+class IncorrectConfigsFormat(Exception):
+    def __str__(self): return 'Incorrect configs format. JSON format only!'

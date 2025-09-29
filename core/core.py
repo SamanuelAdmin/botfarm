@@ -5,7 +5,8 @@ from typing import Optional
 from core.core_configurator import CoreConfigurator
 from core.logger import Logger, Log
 from core.service import IService, Service
-from core.exceptions import AdbManagerNotFound, CoreIsNotInitialized
+from core.exceptions import *
+from core.global_service_queue import GlobalServiceQueue
 from meta import singleton
 from meta.singleton import Singleton
 from services.adb_manager import AdbClient, AdbManager
@@ -23,27 +24,35 @@ class ICore(ABC):
 
 
 class Core(ICore, metaclass=Singleton):
+    '''
+        System to control all devices at the same time.
+        Also control database via services.
 
-    def __init__(self, adbHubs: list[AdbManager], logger: Optional[Logger]=None):
-        '''
-            service is the obj that can control device and modules,
-            which are used to control device
-            map of the service table:
-            key: device_serial@hub_uuid
-            value: IService`s class obj
+        Creating database services - config section (config method)
+        Loading hubs
 
-            Hub table - table with all hubs controllers (AdbManagers)
-            mapping for all adb hubs (adb managers)
-            (key) hub_uuid : AdbManager
-        '''
+        service is the obj that can control device and modules,
+        which are used to control device
+        map of the service table:
+        key: device_serial@hub_uuid
+        value: IService`s class obj
 
+        Hub table - table with all hubs controllers (AdbManagers)
+        mapping for all adb hubs (adb managers)
+        (key) hub_uuid : AdbManager
+    '''
+
+
+    def __init__(self, logger: Optional[Logger]=None):
         # gotten from loader (all private)
-        self.__adbHubs: list[AdbManager] = adbHubs
         self.__logger = logger
 
         # tables
         self._services: dict[str, IService] = {}
         self._hubs: dict[str, AdbManager] = {}
+
+        self._configurator: CoreConfigurator
+        self._GSQ: GlobalServiceQueue
 
         # core flags
         self.__isInitialized: bool = False
@@ -78,7 +87,7 @@ class Core(ICore, metaclass=Singleton):
         return newServicesCount
 
 
-    def _loadAdbHub(self, adbManager: AdbManager) -> bool:
+    def loadAdbHub(self, adbManager: AdbManager) -> bool:
         hubUUID = adbManager.getUUID()
         # if hub has no UUID - skip it
         if hubUUID is None:
@@ -95,20 +104,28 @@ class Core(ICore, metaclass=Singleton):
         return True
 
 
-    def configure(self, configurator: CoreConfigurator):
-        # here will be all core configs
-        pass
+    def configure(self, configurator: CoreConfigurator) -> None:
+        '''
+            all configs for the core
+            accept only in CoreConfigurator format (dataclass)
+        '''
+        self._configurator = configurator
+        self.__isConfigured = True
 
 
     def load(self) -> bool:
+        if not self.__isConfigured:
+            raise CoreIsNotConfigured()
+
         loadStartTime = datetime.now()
         self._logAction('info', 'Start loading...')
 
         # fill out HUBS TABLE and SERVICES TABLE
-        for adbManager in self.__adbHubs:
-            if not self._loadAdbHub(adbManager):
-                # here will be a warning
-                continue
+        for adbManager in adbHubs:
+            if not self.loadAdbHub(adbManager):
+                continue # skip this hub
+
+        self._GSQ = GlobalServiceQueue(self._configurator.max_gsq_units)
 
         self.__isInitialized = True
         loadTime = (datetime.now() - loadStartTime).total_seconds()
