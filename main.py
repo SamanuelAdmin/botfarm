@@ -25,7 +25,7 @@ def main():
     #     name="Leonardo Della",
     #     bio="Pittore classico moderno",
     # )
-
+    
     editProfileImage(adb, adbAuto, 'C:\\Users\\PC\\Desktop\\female\\janellecaruso_\\single_photo_12.jpg')
 
     # likePost(adb, adbAuto, 'https://www.instagram.com/p/DAbsb11qEYw/')

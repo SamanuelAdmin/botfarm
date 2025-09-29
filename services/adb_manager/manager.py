@@ -126,12 +126,23 @@ class AdbClient:
         return True
 
 
+# ADB HUB API
 class Manager:
     def __init__(self, api: str):
         self.api = api
         self.apiConnector = ApiConnector(api)
-        self._adbClients = {}
+        self._adbClients: dict[str, AdbClient] = {}
 
+    # ADB HUB INFO
+    def getUUID(self) -> str|None:
+        response =  self.apiConnector.apiRequest(
+            '/all/id'
+        )
+        if type(response) is int: raise IncorrectStatusCodeException(response)
+        return response.get('result')
+
+
+    # CREATE AND READ FOR ALL CLIENTS
     def getAllSerials(self) -> list[str]|list:
         response =  self.apiConnector.apiRequest(
             '/all/all'
@@ -141,18 +152,23 @@ class Manager:
         if response.get('status') != True: return []
         return response.get('result') if response.get('result') else []
 
+    def getAllLoadedSerials(self) -> dict[str, AdbClient]:
+        return self._adbClients
+
     def loadAllSerials(self) -> None:
         serials = self.getAllSerials()
 
         for serial in serials:
             self._adbClients[serial] = AdbClient(self.apiConnector, serial)
 
+
+    # CREATE AND READ FOR 1 CLIENT
     def loadSerial(self, serial: str) -> AdbClient:
         adbClient = AdbClient(self.apiConnector, serial)
         self._adbClients[serial] = adbClient
         return adbClient
 
-    def getClient(self, serial: str) -> AdbClient:
+    def getClient(self, serial: str) -> AdbClient|None:
         return self._adbClients.get(serial)
 
 
