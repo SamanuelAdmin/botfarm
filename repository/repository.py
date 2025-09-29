@@ -29,16 +29,16 @@ class Repository(CRUD, metaclass=Singleton):
                 self.controller.add(obj)
 
 
-    def read(self, model: Type[Base], _id: int) -> Any:
+    def read(self, model: Type[Base], _id: int|str) -> Any:
         return self.controller.session.get(model, _id)
 
-    def update(self, model: Type[Base], _id, **kwargs) -> None:
+    def update(self, model: Type[Base], _id: int|str, **kwargs) -> None:
         obj = self.controller.session.get(model, _id)
         for k, v in kwargs.items():
             setattr(obj, k, v)
         self.controller.save()
 
-    def delete(self, model: Type[Base], _id: int) -> None:
+    def delete(self, model: Type[Base], _id: int|str) -> None:
         self.controller.delete(
             self.controller.session.get(model, _id)
         )

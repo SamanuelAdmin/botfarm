@@ -4,6 +4,7 @@ from crudadmin import CRUDAdmin
 from fastapi import FastAPI
 
 from db.data.account import *
+from db.data.adb_hub import *
 from db.data.device_id import *
 from db.data.connected_email import *
 from db.connector import DatabaseConnector
@@ -42,6 +43,13 @@ admin.add_view(
     model=ConnectedEmail,
     create_schema=ConnectedEmailSchemeCreate,
     update_schema=ConnectedEmailSchemeUpdate,
+    allowed_actions=ALLOWED_ACTIONS
+)
+
+admin.add_view(
+    model=AdbHub,
+    create_schema=AdbHubSchemeCreate,
+    update_schema=AdbHubSchemeUpdate,
     allowed_actions=ALLOWED_ACTIONS
 )
 

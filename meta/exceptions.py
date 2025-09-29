@@ -19,3 +19,7 @@ class AccountNotFoundHttpException(HTTPException):
 
 
 class IncorrectDataFormatException(Exception): pass
+
+
+class AdbHubNotFound(Exception): pass
+class AdbHubAlreadyExists(Exception): pass
