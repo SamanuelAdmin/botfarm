@@ -24,16 +24,19 @@ class Log:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def __str__(self):
-        return self._getDatetime() + ' ' if self._setDatetime else '' \
-                + f'[{self._type}]  {"".join(self.info)}'
+        dateTimeSubsting: str = self._getDatetime() + ' ' if self._setDatetime else ''
+        return f'{dateTimeSubsting}  [{self._type}]  {"".join(self.info)}'
 
 
 
-class Logger(IQueue, metaclass=Singleton):
+class Logger(IQueue):
+    __metaclass__ = Singleton
+
     def __init__(self):
         self._logsList: list[Log] = []
 
     def add(self, log: Log):
+        print(log)
         self._logsList.append(log)
 
     def get(self) -> Log: return self._logsList.pop(0)

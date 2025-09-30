@@ -40,7 +40,7 @@ class AdbHubManager:
 
 
     def delete(self, hubUUID: str) -> None:
-        self.v(hubUUID)
+        self._require(hubUUID)
         self.repository.delete(AdbHub, hubUUID)
 
 

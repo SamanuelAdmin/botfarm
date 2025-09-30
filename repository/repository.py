@@ -7,12 +7,14 @@ from meta.crud import CRUD
 from meta.singleton import Singleton
 
 
-class Repository(CRUD, metaclass=Singleton):
+class Repository(CRUD):
     """
         Repository class is middle layer between
         database controller and services.
         Release all CRUD operations + custom methods.
     """
+
+    __metaclass__ = Singleton
 
     def __init__(self):
         self.controller = DatabaseController()

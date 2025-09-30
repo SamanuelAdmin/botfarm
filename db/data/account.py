@@ -51,7 +51,7 @@ class AccountSchemeCreate(BaseModel):
     device_id: DeviceIDSchemeCreate
     connected_emails: list[ConnectedEmailSchemeCreate]
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True
 
 
 class AccountSchemeUpdate(BaseModel):
@@ -63,4 +63,4 @@ class AccountSchemeUpdate(BaseModel):
     device_id: Optional[DeviceIDSchemeUpdate] = None
     connected_emails: Optional[list[ConnectedEmailSchemeUpdate]] = None
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True

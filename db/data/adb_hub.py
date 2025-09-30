@@ -17,12 +17,14 @@ class AdbHub(Base):
 
 
 class AdbHubSchemeCreate(BaseModel):
+    id: str
     apiLink: str
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True
 
 
 class AdbHubSchemeUpdate(BaseModel):
+    id: str
     apiLink: str
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True

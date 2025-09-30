@@ -39,7 +39,7 @@ class DeviceIDSchemeCreate(BaseModel):
     session_id: str
     phone_id: str
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True
 
 
 class DeviceIDSchemeUpdate(BaseModel):
@@ -48,4 +48,4 @@ class DeviceIDSchemeUpdate(BaseModel):
     session_id: Optional[str] = None
     phone_id: Optional[str] = None
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True

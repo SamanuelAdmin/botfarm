@@ -6,10 +6,12 @@ from core.core_configurator import CoreConfigurator
 from core.logger import Logger, Log
 from core.service import IService, Service
 from core.exceptions import *
-from core.global_service_queue import GlobalServiceQueue
+from core.global_service_queue import GlobalServiceManager
 from meta import singleton
 from meta.singleton import Singleton
 from services.adb_manager import AdbClient, AdbManager
+from services.adb_manager.exceptions import IncorrectStatusCodeException
+from services.db_services import accounts_manager, adb_hub_manager
 
 
 class ICore(ABC):
@@ -23,7 +25,7 @@ class ICore(ABC):
 
 
 
-class Core(ICore, metaclass=Singleton):
+class Core(ICore):
     '''
         System to control all devices at the same time.
         Also control database via services.
@@ -42,6 +44,8 @@ class Core(ICore, metaclass=Singleton):
         (key) hub_uuid : AdbManager
     '''
 
+    __metaclass__ = Singleton
+
 
     def __init__(self, logger: Optional[Logger]=None):
         # gotten from loader (all private)
@@ -52,7 +56,10 @@ class Core(ICore, metaclass=Singleton):
         self._hubs: dict[str, AdbManager] = {}
 
         self._configurator: CoreConfigurator
-        self._GSQ: GlobalServiceQueue
+        self._GSQ: GlobalServiceManager
+        # DB services
+        self._adbHubManager: adb_hub_manager.AdbHubManager
+        self._accountsManager: accounts_manager.AccountsManager
 
         # core flags
         self.__isInitialized: bool = False
@@ -88,11 +95,16 @@ class Core(ICore, metaclass=Singleton):
 
 
     def loadAdbHub(self, adbManager: AdbManager) -> bool:
-        hubUUID = adbManager.getUUID()
-        # if hub has no UUID - skip it
-        if hubUUID is None:
+        try:
+            hubUUID = adbManager.getUUID()
+
+            # if hub has no UUID - skip it
+            if hubUUID is None:
+                raise IncorrectStatusCodeException(404, adbManager.api)
+        except IncorrectStatusCodeException:
             self._logAction('error', f'Cannot get UUID of adb hub. Skipped.')
             return False
+
 
         self._hubs[hubUUID] = adbManager
 
@@ -117,15 +129,21 @@ class Core(ICore, metaclass=Singleton):
         if not self.__isConfigured:
             raise CoreIsNotConfigured()
 
+        # objs for db connections
+        self._adbHubManager = adb_hub_manager.AdbHubManager()
+        self._accountsManager = accounts_manager.AccountsManager()
+
         loadStartTime = datetime.now()
         self._logAction('info', 'Start loading...')
 
         # fill out HUBS TABLE and SERVICES TABLE
-        for adbManager in adbHubs:
+        for adbHubRecord in self._adbHubManager.getAll():
+            adbManager = AdbManager(adbHubRecord.apiLink)
+
             if not self.loadAdbHub(adbManager):
                 continue # skip this hub
 
-        self._GSQ = GlobalServiceQueue(self._configurator.max_gsq_units)
+        self._GSM = GlobalServiceManager(self._configurator.max_gsq_units)
 
         self.__isInitialized = True
         loadTime = (datetime.now() - loadStartTime).total_seconds()

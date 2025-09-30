@@ -10,6 +10,7 @@ from core.exceptions import TaskAlreadyStarted, TaskNotStarted
 class ITask(ABC):
     _function: Callable
 
+
     @abstractmethod
     def start(self) -> bool: ...
     @abstractmethod

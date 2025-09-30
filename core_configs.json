@@ -1,5 +1,3 @@
 {
-    "core": {
-        "max_gsq_units": 128
-    }
+  "max_gsq_units": 128
 }

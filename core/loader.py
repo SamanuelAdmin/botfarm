@@ -6,7 +6,7 @@ from meta.singleton import Singleton
 from core.exceptions import IncorrectConfigsFormat, CoreIsNotInitialized
 from core.core_configurator import CoreConfigurator
 from core.logger import Logger, Log
-from core.core import Core
+from core.core import ICore, Core
 from services.adb_manager import AdbManager
 
 
@@ -42,7 +42,7 @@ class Loader(metaclass=Singleton):
     def logger(self) -> Logger: return self._logger
 
     @property
-    def core(self) -> Core: return self.__core
+    def core(self) -> ICore: return self.__core
 
 
     def _loadConfigsFromFile(self) -> CoreConfigurator:
@@ -55,8 +55,10 @@ class Loader(metaclass=Singleton):
                 raise IncorrectConfigsFormat()
 
         for name in list(configs.keys()):
-            if not hasattr(CoreConfigurator, name):
+            if not name in CoreConfigurator.__dataclass_fields__.keys():
                 self._logger.add(Log('warning', f'Unavailable config: {name}. Ignoring...'))
                 del configs[name]
 
         return CoreConfigurator(**configs)
+
+

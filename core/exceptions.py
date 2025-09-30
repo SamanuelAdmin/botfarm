@@ -1,8 +1,5 @@
-from tasks.task import ITask
-
-
 class TaskError(Exception):
-    def __init__(self, task: ITask):
+    def __init__(self, task):
         self.task = task
 
 class NotFoundException(Exception):
@@ -41,3 +38,6 @@ class UnableToDo(Exception):
 
 class IncorrectConfigsFormat(Exception):
     def __str__(self): return 'Incorrect configs format. JSON format only!'
+
+
+class ServiceAlreadyInWork(Exception): pass

@@ -32,11 +32,11 @@ class ConnectedEmailSchemeCreate(BaseModel):
     email: str
     password: str
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True
 
 
 class ConnectedEmailSchemeUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
 
-    class Config: orm_mode = True
+    class Config: from_attributes = True
