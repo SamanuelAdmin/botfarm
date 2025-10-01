@@ -1,6 +1,6 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 from core.core_configurator import CoreConfigurator
 from core.logger import Logger, Log
@@ -27,7 +27,7 @@ class ICore(ABC):
 
 
 class Core(ICore):
-    '''
+    """
         System to control all devices at the same time.
         Also control database via services.
 
@@ -43,7 +43,7 @@ class Core(ICore):
         Hub table - table with all hubs controllers (AdbManagers)
         mapping for all adb hubs (adb managers)
         (key) hub_uuid : AdbManager
-    '''
+    """
 
     __metaclass__ = Singleton
 
@@ -123,10 +123,10 @@ class Core(ICore):
 
 
     def configure(self, configurator: CoreConfigurator) -> None:
-        '''
+        """
             all configs for the core
             accept only in CoreConfigurator format (dataclass)
-        '''
+        """
         self._configurator = configurator
         self.__isConfigured = True
 
@@ -173,31 +173,32 @@ class Core(ICore):
 
 
     def _syscallDecorator(function: Callable):
-        '''
+        """
             Syscalls is methods which can control core actions.
             Like "Core API".
             This decorator check if core is loaded and inited, before
             calling system calls.
-        '''
+        """
 
-        def wrapper(core, serviceId, task, *args, **kwargs):
+        def wrapper(core, serviceId: str, *args, **kwargs) -> Any:
             # core - self, core obj
+            # check is service is exists
+            service = core._services.get(serviceId)
+            if not service: raise NotFoundException()
+
             if not core.isReady:
                 raise CoreIsNotStarted()
 
-            return function(*args, **kwargs)
+            return function(service, *args, **kwargs)
 
         return wrapper
 
 
     @_syscallDecorator
-    def addTask(self, serviceId, task: ITask) -> bool:
-        '''
+    def addTask(self, service: IService, task: ITask) -> bool:
+        """
             Syscall for adding a task to the service by its ID.
-        '''
+        """
 
         # check if service`s id is correct
-        service = self._services.get(serviceId)
-        if not service: raise NotFoundException()
-
         return bool( service.loadTask(task) )

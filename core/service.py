@@ -1,6 +1,6 @@
 import asyncio
 import time
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Callable, Any, List, Optional
 
 from core.tasks.queue import TaskQueue

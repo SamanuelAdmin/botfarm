@@ -1,5 +1,7 @@
-import threading
-from abc import ABC, abstractmethod, abstractproperty
+import multiprocessing
+import queue
+from abc import ABC, abstractmethod
+import time
 from typing import Callable, Any, Optional
 import uuid
 
@@ -8,8 +10,10 @@ from core.exceptions import TaskAlreadyStarted, TaskNotStarted
 
 
 class ITask(ABC):
+    _id: str
     _function: Callable
-
+    _functionArgs: tuple
+    _functionKwargs: dict
 
     @abstractmethod
     def start(self) -> bool: ...
@@ -32,8 +36,12 @@ class Task(ITask):
         self._functionArgs = functionArgs
         self._functionKwargs = functionKwargs
 
-        self.task: Optional[threading.Thread] = None
-        self.taskResult: Optional[Any] = None
+        self._task: Optional[multiprocessing.Process] = None
+        self._dataQueue: multiprocessing.Queue
+        self._taskResult: Optional[Any] = None
+
+        self._isFinished: bool = False
+        self._checkerDelay: float = 0.05
 
 
     @property
@@ -42,28 +50,40 @@ class Task(ITask):
 
 
     def start(self) -> bool | Exception:
-        if self.task: return TaskAlreadyStarted(self)
+        """
+            Can be unoptimized as fuck because of new process for every task.
+            Remove this shit if system is too heavy
+        """
 
-        def taskBody(self: Task):
-            self.taskResult = None
+        if self._task: raise TaskAlreadyStarted(self)
+        self._dataQueue: multiprocessing.Queue = multiprocessing.Queue()
 
+        def taskBody(task: ITask, queue: multiprocessing.Queue) -> None:
             try:
-                self.taskResult = self._function(
-                    *self._functionArgs, **self._functionKwargs
+                taskResult = task._function(
+                    *task._functionArgs, **task._functionKwargs
                 )
+
+                queue.put(taskResult)
             except Exception as error:
-                self.taskResult = error
+                queue.put(error)
 
 
-        self.task = threading.Thread(target=taskBody, args=(self, ))
-        self.task.start()
-        self.task.join()
+        self._task = multiprocessing.Process(target=taskBody, args=(self, self._dataQueue), daemon=True)
+        self._task.start()
 
-        return self.taskResult
+        # self._task.join() DO NOT ISE JOIN, it will block all main process
+        # USE CHECKER INSTEAD
+        while True:
+            try:
+                self._taskResult = self._dataQueue.get()
+                return self._taskResult
+            except queue.Empty:
+                time.sleep(self._checkerDelay)
 
 
 
-    def stop(self) -> bool | Exception:
-        # if not self.task: return TaskNotStarted(self)
-        # !TODO FINISH THIS SHIT
-        pass
+    def stop(self) -> None:
+        if not self._task: raise TaskNotStarted(self)
+
+        self._task.terminate()
