@@ -12,8 +12,9 @@ class ApiConnector:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, adb_hub_api: str):
-        self.adbHubApi = adb_hub_api if adb_hub_api[-1] != '/' else adb_hub_api[:-1]
+    def __init__(self, adb_hub_api: str, timeout: float=2):
+        self._adbHubApi = adb_hub_api if adb_hub_api[-1] != '/' else adb_hub_api[:-1]
+        self._timeout = timeout
 
     def apiRequest(
             self, url: str,
@@ -24,10 +25,13 @@ class ApiConnector:
     ) -> dict[str, Any]|int|Any:
         assert method.lower() in ['get', 'post', 'put', 'delete']
 
-        r = requests.request(
-            method.lower(), self.adbHubApi + url,
-            params=params, headers=headers, data=data
-        )
+        try:
+            r = requests.request(
+                method.lower(), self._adbHubApi + url,
+                params=params, headers=headers, data=data,
+                timeout=self._timeout
+            )
+        except requests.exceptions.Timeout: return 408
 
         if r.status_code != 200: return r.status_code
         try: return r.json()

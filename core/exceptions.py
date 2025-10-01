@@ -30,6 +30,9 @@ class CoreIsNotInitialized(Exception):
 class CoreIsNotConfigured(Exception):
     def __str__(self): return 'Core is not configured. Run .configure method before starting.'
 
+class CoreIsNotStarted(Exception):
+    def __str__(self): return 'Core is not started. Run .start method before the action.'
+
 
 class UnableToDo(Exception):
     def __init__(self, info: str):

@@ -16,7 +16,8 @@ class ITask(ABC):
     @abstractmethod
     def stop(self) -> bool: ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def taskId(self) -> int: ...
 
 

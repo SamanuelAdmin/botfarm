@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod, abstractproperty
 from typing import Callable, Any, List, Optional
 
 from core.tasks.queue import TaskQueue
-from core.tasks.task import Task, ITask
+from core.tasks.task import ITask
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
@@ -28,7 +28,6 @@ class IService(ABC):
     @abstractmethod
     def isWorking(self) -> bool: ...
 
-    @property
     @abstractmethod
     def loadTask(self) -> int: ...
 

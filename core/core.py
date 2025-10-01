@@ -1,17 +1,16 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Callable
 
 from core.core_configurator import CoreConfigurator
 from core.logger import Logger, Log
 from core.service import IService, Service
 from core.exceptions import *
 from core.global_service_queue import GlobalServiceManager
-from core.tasks.task import Task, ITask
+from core.tasks.task import ITask
 from meta import singleton
 from meta.singleton import Singleton
 from services.adb_manager import AdbClient, AdbManager
-from services.adb_manager.adb_auto import AdbAutomatization
 from services.adb_manager.exceptions import IncorrectStatusCodeException
 from services.db_services import accounts_manager, adb_hub_manager
 
@@ -24,9 +23,6 @@ class ICore(ABC):
 
     @abstractmethod
     def start(self) -> bool: ...
-
-    @abstractmethod
-    def addTask(self): ...
 
 
 
@@ -148,7 +144,7 @@ class Core(ICore):
 
         # fill out HUBS TABLE and SERVICES TABLE
         for adbHubRecord in self._adbHubManager.getAll():
-            adbManager = AdbManager(adbHubRecord.apiLink)
+            adbManager = AdbManager(adbHubRecord.apiLink, timeout=self._configurator.hub_response_timeout)
 
             if not self.loadAdbHub(adbManager):
                 continue # skip this hub
@@ -164,6 +160,9 @@ class Core(ICore):
         return True
 
 
+    @property
+    def isReady(self) -> bool: return self._isStarted
+
     def start(self) -> bool:
         if not self.__isInitialized:
             raise CoreIsNotInitialized()
@@ -173,7 +172,7 @@ class Core(ICore):
         return True
 
 
-    def _syscallDecorator(func):
+    def _syscallDecorator(function: Callable):
         '''
             Syscalls is methods which can control core actions.
             Like "Core API".
@@ -181,8 +180,12 @@ class Core(ICore):
             calling system calls.
         '''
 
-        def wrapper(func, *args, **kwargs):
-            return func(*args, **kwargs)
+        def wrapper(core, serviceId, task, *args, **kwargs):
+            # core - self, core obj
+            if not core.isReady:
+                raise CoreIsNotStarted()
+
+            return function(*args, **kwargs)
 
         return wrapper
 
@@ -190,7 +193,11 @@ class Core(ICore):
     @_syscallDecorator
     def addTask(self, serviceId, task: ITask) -> bool:
         '''
-            System call (method)
+            Syscall for adding a task to the service by its ID.
         '''
 
-        pass
+        # check if service`s id is correct
+        service = self._services.get(serviceId)
+        if not service: raise NotFoundException()
+
+        return bool( service.loadTask(task) )

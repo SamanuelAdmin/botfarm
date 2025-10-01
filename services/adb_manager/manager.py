@@ -129,9 +129,10 @@ class AdbClient:
 
 # ADB HUB API
 class Manager:
-    def __init__(self, api: str):
+    def __init__(self, api: str, timeout: float=2):
         self.api = api
-        self.apiConnector = ApiConnector(api)
+        self._timeout = timeout
+        self.apiConnector = ApiConnector(api, timeout=self._timeout)
         self._adbClients: dict[str, AdbClient] = {}
 
     # ADB HUB INFO
