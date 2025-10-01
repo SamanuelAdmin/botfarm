@@ -24,5 +24,7 @@ def main():
     )
     core = loader.core
 
+    core.addTask(1, 2)
+
 
 if __name__ == "__main__": main()

@@ -9,7 +9,7 @@ import cv2
 
 from services.adb_manager import Dot, AdbClient
 from services.ui_recognizer import Recognizer
-from services.adb_manager.adb_auto import AdbAutoManager
+from services.adb_manager.adb_auto import AdbAutomatization
 
 
 
@@ -98,7 +98,7 @@ def waitUntilTextFind(adb: AdbClient, recognizer, text: str, iter: int=-1) -> bo
 def swipeUntilFindElement(
         adb: AdbClient, recognizer: Optional[Recognizer] = None,
         text: Optional[str]=None, templateName: Optional[str]=None,
-        dumpAttrs: Optional[dict[str, str]]=None, adbAuto: Optional[AdbAutoManager]=None,
+        dumpAttrs: Optional[dict[str, str]]=None, adbAuto: Optional[AdbAutomatization]=None,
         iter=-1 ) -> bool:
     assert any([text, templateName, dumpAttrs])
     iter = copy.copy(iter)
@@ -118,7 +118,7 @@ def swipeUntilFindElement(
     return False 
 
 
-def waitForDumpElement(adb: AdbClient, adbAuto: AdbAutoManager, elementAttrs: dict[str, str], iter: int=-1) -> bool|list[int]:
+def waitForDumpElement(adb: AdbClient, adbAuto: AdbAutomatization, elementAttrs: dict[str, str], iter: int=-1) -> bool | list[int]:
     iter = copy.copy(iter)
 
     while iter != 0:
@@ -135,7 +135,7 @@ def simpleLog(adb: AdbClient, *logs):
     print(f'[{currentTime}] {adb.serial} - ', *logs)
 
 
-def goToProfilePage(adb: AdbClient, adbAuto: AdbAutoManager) -> bool:
+def goToProfilePage(adb: AdbClient, adbAuto: AdbAutomatization) -> bool:
     return adbAuto.clickOnElement(client=adb, elementAttrs={'content-desc': 'Profile'}, randomizK=0.2)
 
 

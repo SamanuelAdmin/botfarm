@@ -4,7 +4,7 @@ from services.fa2 import get2FACode
 from scripts.scripts_builder import *
 
 
-def loginScript(adb: AdbClient, adbAuto: AdbAutoManager, login, password, fa2Secret) -> bool:
+def loginScript(adb: AdbClient, adbAuto: AdbAutomatization, login, password, fa2Secret) -> bool:
     recognizer = Recognizer(dataPath=os.path.join(os.getcwd(), 'services', 'ui_recognizer'))
 
     # go to account page
@@ -162,7 +162,7 @@ def loginScript(adb: AdbClient, adbAuto: AdbAutoManager, login, password, fa2Sec
     return True
 
 
-def loginScriptV2(adb: AdbClient, adbAuto: AdbAutoManager, login, password, fa2Secret):
+def loginScriptV2(adb: AdbClient, adbAuto: AdbAutomatization, login, password, fa2Secret):
     # go to profile page
     adbAuto.clickOnElement(
         client=adb, elementAttrs={'content-desc': 'Profile'},
@@ -190,7 +190,7 @@ def loginScriptV2(adb: AdbClient, adbAuto: AdbAutoManager, login, password, fa2S
     waitForDumpElement(adb, adbAuto, elementAttrs={'class': "android.widget.EditText"})
 
     loginPageDump = adb.getScreenDump()
-    usernameSoup = adbAuto.findElementAndGetSoup(
+    usernameSoup = adbAuto.getElementSoup(
         loginPageDump, elementAttrs={'class': "android.widget.EditText"}
     )
     oldUsername = usernameSoup['text']
@@ -244,14 +244,14 @@ def loginScriptV2(adb: AdbClient, adbAuto: AdbAutoManager, login, password, fa2S
 
     simpleLog(adb, 'Finishing...')
     randomDelay(3, 7)
-    if adbAuto.findElementAndGetSoup(
+    if adbAuto.getElementSoup(
         adb.getScreenDump(), elementAttrs={'text': "Finish setting up your account"}
     ): adbAuto.clickOnElement(
         client=adb, elementAttrs={'resource-id': "com.instagram.android:id/igds_promo_dialog_secondary_button"}
     )
 
     randomDelay(1, 3)
-    if adbAuto.findElementAndGetSoup(
+    if adbAuto.getElementSoup(
         adb.getScreenDump(), elementAttrs={'text': 'Allow access to contacts to find people to follow'}
     ): adbAuto.clickOnElement(
         client=adb, elementAttrs={'content-desc': 'Skip'}

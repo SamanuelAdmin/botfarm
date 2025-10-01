@@ -8,11 +8,11 @@ def openViaLink(adb: AdbClient, link: str) -> bool:
 
 def checkForAlertDialog(adb: AdbClient, adbAuto, link: str) -> bool:
     # TRUE - EVERYTHING OK, FALSE - NOT OKAY
-    alertDialogSoup = adbAuto.findElementAndGetSoup(
+    alertDialogSoup = adbAuto.getElementSoup(
         adb.getScreenDump(),
         elementAttrs={'resource-id': 'com.instagram.android:id/igds_alert_dialog_headline'}
     )
-    promoDialogSoup = adbAuto.findElementAndGetSoup(
+    promoDialogSoup = adbAuto.getElementSoup(
         adb.getScreenDump(),
         elementAttrs={'resource-id', 'com.instagram.android:id/igds_headline_headline'}
     )
@@ -41,7 +41,7 @@ def checkForAlertDialog(adb: AdbClient, adbAuto, link: str) -> bool:
     return True
 
 
-def likePost(adb: AdbClient, adbAuto: AdbAutoManager, link: str) -> bool:
+def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     simpleLog(adb, f'Opening post via link {link}')
     openViaLink(adb, link)
 
@@ -60,14 +60,14 @@ def likePost(adb: AdbClient, adbAuto: AdbAutoManager, link: str) -> bool:
     )
     return True
 
-def returnViaReturnButton(adb : AdbClient, adbAuto: AdbAutoManager) -> bool:
+def returnViaReturnButton(adb : AdbClient, adbAuto: AdbAutomatization) -> bool:
     simpleLog(adb, 'Returning...')
     return adbAuto.clickOnElement(
         client=adb, elementAttrs={'resource-id': 'com.instagram.android:id/action_bar_button_back'}
     )
 
 
-def followAccount(adb: AdbClient, adbAuto: AdbAutoManager, link: str) -> bool:
+def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     simpleLog(adb, f'Opening profile via link {link}')
     openViaLink(adb, link)
 
@@ -76,7 +76,7 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutoManager, link: str) -> bool:
     )
 
     # check if account is already followed
-    followButtonSoup = adbAuto.findElementAndGetSoup(
+    followButtonSoup = adbAuto.getElementSoup(
         adb.getScreenDump(), elementAttrs={'resource-id': 'com.instagram.android:id/profile_header_follow_button'}
     )
 

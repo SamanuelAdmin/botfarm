@@ -3,11 +3,12 @@ import random
 import shlex
 import time
 import json
-from typing import Optional
+from typing import Optional, Any
 
 from .api_connector import ApiConnector
 from .exceptions import *
 from .meta.dot import Dot
+
 
 
 class AdbClient:
@@ -88,7 +89,7 @@ class AdbClient:
                     file.write(data)
 
             return fullPath
-        except Exception as e: print(FileDownloadException(fullPath))
+        except Exception as e: raise FileDownloadException(fullPath)
 
         return None
 

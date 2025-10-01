@@ -14,7 +14,7 @@ def waitForEditPage(adb, adbAuto):
     )
 
 
-def editProfileImage(adb: AdbClient, adbAuto: AdbAutoManager, pathToImage: str) -> bool:
+def editProfileImage(adb: AdbClient, adbAuto: AdbAutomatization, pathToImage: str) -> bool:
     newImagePath = '/sdcard/DCIM/Camera/profile.jpg'
 
     # pushing image to device
@@ -42,7 +42,7 @@ def editProfileImage(adb: AdbClient, adbAuto: AdbAutoManager, pathToImage: str) 
     adbAuto.clickOnElement(client=adb, elementAttrs={'resource-id': "com.instagram.android:id/next_button_textview"})
     simpleLog(adb, 'Done. Returning...')
 
-    if adbAuto.findElementAndGetSoup(
+    if adbAuto.getElementSoup(
         adb.getScreenDump(), elementAttrs={'resource-id': 'com.instagram.android:id/action_bar_button_back'}
     ): adbAuto.clickOnElement(
         client=adb, elementAttrs={'resource-id': 'com.instagram.android:id/action_bar_button_back'}
@@ -51,7 +51,7 @@ def editProfileImage(adb: AdbClient, adbAuto: AdbAutoManager, pathToImage: str) 
     return True
 
 
-def editProfileInfoScript(adb: AdbClient, adbAuto: AdbAutoManager, name: str="", username: str="", bio: str=""):
+def editProfileInfoScript(adb: AdbClient, adbAuto: AdbAutomatization, name: str= "", username: str= "", bio: str= ""):
     # go to profile page
     goToProfilePage(adb, adbAuto)
     simpleLog(adb, 'Opened profile page')
@@ -74,7 +74,7 @@ def editProfileInfoScript(adb: AdbClient, adbAuto: AdbAutoManager, name: str="",
         waitForDumpElement(adb, adbAuto, elementAttrs={'resource-id': "com.instagram.android:id/full_name_change_limiting_textview"})
 
         simpleLog(adb, 'Page is loaded, getting old name to delete...')
-        oldName = adbAuto.findElementAndGetSoup(
+        oldName = adbAuto.getElementSoup(
             adb.getScreenDump(), elementAttrs={
                 'class': "android.widget.EditText",
                 'resource-id': ""
@@ -114,7 +114,7 @@ def editProfileInfoScript(adb: AdbClient, adbAuto: AdbAutoManager, name: str="",
         waitForDumpElement(adb, adbAuto, elementAttrs={'resource-id': "com.instagram.android:id/username_lock_help_textview"})
 
         simpleLog(adb, 'Page is loaded, getting old username to delete...')
-        oldUsername = adbAuto.findElementAndGetSoup(
+        oldUsername = adbAuto.getElementSoup(
             adb.getScreenDump(), elementAttrs={
                 'class': "android.widget.EditText",
                 'resource-id': "",

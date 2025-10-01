@@ -5,6 +5,8 @@ from typing import Callable, Any, List, Optional
 
 from core.tasks.queue import TaskQueue
 from core.tasks.task import Task, ITask
+from services.adb_manager import AdbClient
+from services.adb_manager.adb_auto import AdbAutomatization
 
 
 class IService(ABC):
@@ -62,9 +64,13 @@ class Service(IService):
     _id: str
     _taskQueue: TaskQueue
 
-    def __init__(self, _id, singleTaskMode: bool=True, iteratorDelay: float=0.05):
+    def __init__(self, _id: str, adbClient: AdbClient, singleTaskMode: bool=True, iteratorDelay: float=0.05):
         self._id = _id
         self._taskQueue = TaskQueue()
+
+        # ADB API
+        self._adbClient = adbClient
+        self._adbAuto = AdbAutomatization(self._adbClient)
 
         # MODES
         # process only one task - then block iterator
@@ -110,7 +116,11 @@ class Service(IService):
         return True
 
     def loadTask(self, task: ITask) -> int:
-        # returns loaded task size
+        '''
+            Process task, adding service`s adb api (adbClient)
+            and add task to queue.
+            Returns loaded tasks cound.
+        '''
         self._taskQueue.add(task)
         return self.loadedTasksCount
 

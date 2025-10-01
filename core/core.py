@@ -7,9 +7,11 @@ from core.logger import Logger, Log
 from core.service import IService, Service
 from core.exceptions import *
 from core.global_service_queue import GlobalServiceManager
+from core.tasks.task import Task, ITask
 from meta import singleton
 from meta.singleton import Singleton
 from services.adb_manager import AdbClient, AdbManager
+from services.adb_manager.adb_auto import AdbAutomatization
 from services.adb_manager.exceptions import IncorrectStatusCodeException
 from services.db_services import accounts_manager, adb_hub_manager
 
@@ -22,6 +24,9 @@ class ICore(ABC):
 
     @abstractmethod
     def start(self) -> bool: ...
+
+    @abstractmethod
+    def addTask(self): ...
 
 
 
@@ -85,7 +90,11 @@ class Core(ICore):
 
         for serial, adbClient in allLoadedClients.items():
             serviceId = f'{serial}@{hubUUID}'
-            newService = Service(_id=serviceId)
+
+            # adding adb API to service
+            newService = Service(
+                _id=serviceId, adbClient=adbClient
+            )
 
             self._services[serviceId] = newService
 
@@ -162,3 +171,26 @@ class Core(ICore):
         self._logAction('info', 'Core started.')
         self._isStarted = True
         return True
+
+
+    def _syscallDecorator(func):
+        '''
+            Syscalls is methods which can control core actions.
+            Like "Core API".
+            This decorator check if core is loaded and inited, before
+            calling system calls.
+        '''
+
+        def wrapper(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+
+    @_syscallDecorator
+    def addTask(self, serviceId, task: ITask) -> bool:
+        '''
+            System call (method)
+        '''
+
+        pass
