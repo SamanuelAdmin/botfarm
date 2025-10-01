@@ -41,3 +41,10 @@ class IncorrectConfigsFormat(Exception):
 
 
 class ServiceAlreadyInWork(Exception): pass
+
+
+class NotEnoughCores(Exception):
+    def __init__(self, info: str):
+        super().__init__(info)
+
+class GSMNotLoaded(Exception): pass

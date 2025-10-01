@@ -64,6 +64,7 @@ class Core(ICore):
         # core flags
         self.__isInitialized: bool = False
         self.__isConfigured: bool = False
+        self._isStarted: bool = False
 
 
     def _logAction(self, _type: str, *info):
@@ -144,6 +145,9 @@ class Core(ICore):
                 continue # skip this hub
 
         self._GSM = GlobalServiceManager(self._configurator.max_gsq_units)
+        self._GSM.load()
+        self._logAction('info', f'Global service manager loaded. Loading services to GSM...')
+        self._GSM.add(*self._services.values())
 
         self.__isInitialized = True
         loadTime = (datetime.now() - loadStartTime).total_seconds()
@@ -155,4 +159,6 @@ class Core(ICore):
         if not self.__isInitialized:
             raise CoreIsNotInitialized()
 
+        self._logAction('info', 'Core started.')
+        self._isStarted = True
         return True
