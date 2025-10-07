@@ -184,7 +184,7 @@ class Core(ICore):
             # core - self, core obj
             # check is service is exists
             service = core._services.get(serviceId)
-            if not service: raise NotFoundException()
+            if not service: raise NotFoundException(f'Service {serviceId} not found.')
 
             if not core.isReady:
                 raise CoreIsNotStarted()
@@ -195,7 +195,7 @@ class Core(ICore):
 
 
     @_syscallDecorator
-    def addTask(self, service: IService, task: ITask) -> bool:
+    def addTaskToService(self, service: IService, task: ITask) -> bool:
         """
             Syscall for adding a task to the service by its ID.
         """
