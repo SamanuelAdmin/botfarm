@@ -22,6 +22,10 @@ class IService(ABC):
 
     @property
     @abstractmethod
+    def inner(self) -> dict[str, Any]: ...
+
+    @property
+    @abstractmethod
     def loadedTasksCount(self) -> int: ...
 
     @property
@@ -29,7 +33,7 @@ class IService(ABC):
     def isWorking(self) -> bool: ...
 
     @abstractmethod
-    def loadTask(self) -> int: ...
+    def loadTask(self, task: ITask) -> int: ...
 
     @abstractmethod
     async def start(self) -> bool: ...
@@ -93,6 +97,18 @@ class Service(IService):
 
     @property
     def id(self): return self._id
+
+    @property
+    def inner(self) -> dict[str, Any]:
+        """
+            Returns all inner objects, which you need to use as an API.
+            For example AdbClient and AdbService for tasks creations
+        """
+        return {
+            'adbClient': self._adbClient,
+            'adbAuto': self._adbAuto
+        }
+
 
     @property
     def getCurrentTask(self) -> ITask:

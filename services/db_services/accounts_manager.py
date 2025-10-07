@@ -61,7 +61,7 @@ class AccountsManager:
         return account, account.device_id, account.connected_emails
 
 
-    def getAllAccounts(self) -> Generator[Account]:
+    def getAllAccounts(self) -> Generator[Account, None, None]:
         for account in self.repository.readAll(Account): yield account
 
 

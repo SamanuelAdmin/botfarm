@@ -6,7 +6,8 @@ from typing import Callable, Any, Optional
 import uuid
 
 from core.exceptions import TaskAlreadyStarted, TaskNotStarted
-
+from services.adb_manager import AdbClient
+from services.adb_manager.adb_auto import AdbAutomatization
 
 
 class ITask(ABC):
@@ -27,13 +28,16 @@ class ITask(ABC):
 
 
 class Task(ITask):
-    _function: Callable[[Any], Any]
+    _function: Callable[[AdbClient, AdbAutomatization, *tuple[Any, ...]], bool]
 
-    def __init__(self, function: Callable[[Any], Any], *functionArgs, **functionKwargs):
+    def __init__(
+            self, function: Callable[[AdbClient, AdbAutomatization, *tuple[Any, ...]], bool],
+            adbClient: AdbClient, adbAuto: AdbAutomatization,
+            *functionArgs, **functionKwargs ):
         self._id: str = str(uuid.uuid4())
 
         self._function = function
-        self._functionArgs = functionArgs
+        self._functionArgs = (adbClient, adbAuto, *functionArgs)
         self._functionKwargs = functionKwargs
 
         self._task: Optional[multiprocessing.Process] = None

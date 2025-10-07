@@ -42,7 +42,7 @@ class Loader(metaclass=Singleton):
     def logger(self) -> Logger: return self._logger
 
     @property
-    def core(self) -> ICore: return self.__core
+    def core(self) -> Core: return self.__core
 
 
     def _loadConfigsFromFile(self) -> CoreConfigurator:

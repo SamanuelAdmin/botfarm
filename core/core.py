@@ -7,10 +7,12 @@ from core.logger import Logger, Log
 from core.service import IService, Service
 from core.exceptions import *
 from core.global_service_queue import GlobalServiceManager
-from core.tasks.task import ITask
+from core.tasks.task import ITask, Task
+from core.middleware import *
 from meta import singleton
 from meta.singleton import Singleton
 from services.adb_manager import AdbClient, AdbManager
+from services.adb_manager.adb_auto import AdbAutomatization
 from services.adb_manager.exceptions import IncorrectStatusCodeException
 from services.db_services import accounts_manager, adb_hub_manager
 
@@ -172,33 +174,21 @@ class Core(ICore):
         return True
 
 
-    def _syscallDecorator(function: Callable):
-        """
-            Syscalls is methods which can control core actions.
-            Like "Core API".
-            This decorator check if core is loaded and inited, before
-            calling system calls.
-        """
 
-        def wrapper(core, serviceId: str, *args, **kwargs) -> Any:
-            # core - self, core obj
-            # check is service is exists
-            service = core._services.get(serviceId)
-            if not service: raise NotFoundException(f'Service {serviceId} not found.')
-
-            if not core.isReady:
-                raise CoreIsNotStarted()
-
-            return function(service, *args, **kwargs)
-
-        return wrapper
-
-
-    @_syscallDecorator
-    def addTaskToService(self, service: IService, task: ITask) -> bool:
+    @syscall
+    def addTaskToService(self, service: IService|str, function: Callable[[AdbClient, AdbAutomatization, *tuple[Any, ...]], bool], *args, **kwargs) -> bool:
         """
             Syscall for adding a task to the service by its ID.
+            Create task using function, args and kwargs.
+            Do not set AdbClient and AdbAuto to the args ot kwargs.
+            These will be deleted automatically.
         """
+
+        task: ITask = Task(
+            function,
+            service.inner.get('adbClient'), service.inner.get('adbAuto'),
+            *args
+        )
 
         # check if service`s id is correct
         return bool( service.loadTask(task) )
