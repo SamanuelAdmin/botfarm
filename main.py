@@ -1,3 +1,5 @@
+import multiprocessing
+
 import uvicorn
 from dotenv import load_dotenv
 
@@ -19,9 +21,13 @@ def main():
     from db.connector import DatabaseConnector
     DatabaseConnector().create_all()
 
-    # TODO: START SHIT IN NEW PROCESS
-    # from views import app
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
+    # start admin panel. run this in new process (its gonna block it)
+    def startDatabaseAdminPanel():
+        from views import app
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    databaseAdminPanelProcess = multiprocessing.Process(target=startDatabaseAdminPanel)
+    databaseAdminPanelProcess.start()
 
     loader = Loader(
         configFileName='core_configs.json',
