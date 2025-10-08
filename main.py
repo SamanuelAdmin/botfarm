@@ -53,6 +53,8 @@ def main():
     if mode == "debug":
         # block main process by starting admin panels and API
         startDatabaseAdminPanel()
+        # exiting
+        return
     else:
         # let system start correctly, without blocking
         databaseAdminPanelProcess = multiprocessing.Process(target=startDatabaseAdminPanel)
