@@ -90,10 +90,13 @@ class Service(IService):
         self._blocker: bool = False # block = True, False is unblocked
         self._isWorking = False
         self._isAlive: bool = True # kill iterator when its false
+        self._isIteratorStarted: bool = False
 
     def __del__(self):
         self.kill()
 
+    def __str__(self):
+        return f'service_{self._id}'
 
     @property
     def id(self): return self._id
@@ -141,6 +144,7 @@ class Service(IService):
 
 
     def _iterator(self):
+        print('Iterator has been started.')
         while True:
             # iterator killer
             if not self._isAlive: break
@@ -149,6 +153,7 @@ class Service(IService):
                 time.sleep(0.05)
                 continue
 
+            print('Got new task.')
             # getting new task
             task = self._taskQueue.get()
             self._currentTask = task
@@ -166,9 +171,13 @@ class Service(IService):
 
     async def start(self) -> bool:
         # start via asyncio.run() or create_task
-        # will block a thread!!! if yuu use await or run
+        # will block a thread!!! if you use await or run
         self._blocker = False
-        await asyncio.to_thread(self._iterator)
+
+        if not self._isIteratorStarted:
+            await asyncio.to_thread(self._iterator)
+            self._isAlive = True
+
         return True
 
     def wait(self):

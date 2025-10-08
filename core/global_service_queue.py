@@ -2,6 +2,7 @@ import asyncio
 import queue
 import threading
 import uuid
+from multiprocessing.pool import worker
 from typing import Any, Callable, Generator
 
 import multiprocessing
@@ -18,6 +19,7 @@ class Worker(IQueue):
         Worker - one physic core loader,
         Process all tasks at the same time on one core via asyncio
         If service has no tasks al all - remove from the queue automatically
+        Worker works only with active services
     '''
 
     def __init__(self, iteratorDelay: float=0.05):
@@ -43,21 +45,21 @@ class Worker(IQueue):
             except queue.Empty: break
 
 
+    def _deleteService(self, service: IService) -> None:
+        service.kill()
+        del self._services[service.id]
+
     async def _iterator(self):
         while True:
             await asyncio.sleep(self._iteratorDelay)
 
             # adder/remover for new
             for s2add in self._getFromQueue(self._servicesToAdd):
-                self._services[s2add[0]] = s2add[1]
+                self._services[s2add.id] = s2add
 
             for s2rem in self._getFromQueue(self._servicesToRemove):
-                s2rem[1].kill()
-                del self._services[s2rem[0]]
+                self._deleteService(s2rem)
 
-            # clear adder and remover lists
-            # self._servicesToAdd.clear()
-            # self._servicesToRemove.clear()
 
             # services starter
             for serviceId in list(self._services.keys()):
@@ -68,9 +70,10 @@ class Worker(IQueue):
 
                 # delete if service has no tasks and not working
                 if service.loadedTasksCount == 0:
-                    del self._services[serviceId]
+                    self._deleteService(service)
 
                 # starting if it has task(s) and not already started
+                print('Starting service', service)
                 asyncio.create_task(service.start())
 
 
@@ -85,13 +88,11 @@ class Worker(IQueue):
         if service.id in list(self._services.keys()):
             raise ServiceAlreadyInWork()
 
-        # self._servicesToAdd.append( (service.id, service) )
-        self._servicesToAdd.put( (service.id, service) )
+        self._servicesToAdd.put( service )
 
     def remove(self, service: IService) -> None:
         if service.id in list(self._services.keys()):
-            # self._servicesToRemove.append( (service.id, service) )
-            self._servicesToRemove.put( (service.id, service) )
+            self._servicesToRemove.put( service )
 
     def get(self) -> None:
         raise UnableToDo('Cannot get service from Worker of GSQ! Use SERVICES TABLE instead.')
@@ -102,10 +103,9 @@ class Worker(IQueue):
 
 
 
-class GlobalServiceManager(IQueue):
+class GlobalServiceManager:
     '''
         Manager for all CoreWorkers (1 core = 1 worker).
-        Queue for controlling all services processes.
         Main for the core, only one in the program.
         Name - GSM
         This entity just distribute resources between services.
@@ -121,12 +121,16 @@ class GlobalServiceManager(IQueue):
     __metaclass__ = Singleton
 
     def __init__(self, max_units: int):
+        # changing process creating method
+        self._context = multiprocessing.get_context("fork")
         self._max_units = max_units
-        self._workers: list[Worker] = []
 
         # table with workers addrs for every service
         # service.id : service_worker
-        self._servicesQueue: dict[str, Worker] = {}
+        self._servicesQueue: dict[str, Worker] = {} # NEEDS ONLY FOR REMOVING AND ADDING SERVICES IN WORKERS
+
+        # workers lists
+        self._workers: list[Worker] = []
         self._workersProcesses: list[multiprocessing.Process] = []
 
         self._isLoaded = False
@@ -143,7 +147,14 @@ class GlobalServiceManager(IQueue):
 
     @property
     def size(self) -> int:
-        return len(self._servicesQueue)
+        raise UnableToDo('Cannot get size from GlobalServiceManager')
+
+    @property
+    def workersCount(self) -> int: return len(self._workers)
+
+    @property
+    def startedWorkersCount(self) -> int: return len(self._workersProcesses)
+
 
     def _onlyAfterLoad(self) -> None:
         if not self._isLoaded: raise GSMNotLoaded()
@@ -157,17 +168,16 @@ class GlobalServiceManager(IQueue):
         llw.add(service)
         self._servicesQueue[service.id] = llw
 
-    def add(self, *args: tuple[IService]) -> None:
+
+    def add(self, *args) -> None:
+        """
+            Add service to the less loaded worker.
+        """
         self._onlyAfterLoad()
-        if len(args) == 1:
-            return self._loadService(*args)
+        if len(args) == 1: self._loadService(*args)
+        else:
+            for arg in args: self._loadService(arg)
 
-        for arg in args: self._loadService(arg)
-        return
-
-
-    def get(self) -> None:
-        raise UnableToDo('Cannot get service from GSM! Use SERVICES TABLE instead.')
 
     def remove(self, service: IService) -> None:
         self._onlyAfterLoad()
@@ -175,6 +185,7 @@ class GlobalServiceManager(IQueue):
         if not serviceWorker: return
 
         serviceWorker.remove(service)
+
 
 
     def load(self) -> None:
@@ -192,9 +203,13 @@ class GlobalServiceManager(IQueue):
             self._workers.append( worker )
             # daemon = True -> processes will be killed with GSM
             self._workersProcesses.append(
-                multiprocessing.Process(target=worker.start, daemon=True)
+                # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
+                self._context.Process(target=worker.start)
             )
 
         self._startWorkers()
         self._isLoaded = True
 
+    def kill(self) -> None:
+        # TODO: MAKE KILLER FOR ALL WORKERS PROCESS (via terminate)
+        pass

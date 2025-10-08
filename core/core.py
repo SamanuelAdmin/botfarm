@@ -153,8 +153,8 @@ class Core(ICore):
 
         self._GSM = GlobalServiceManager(self._configurator.max_gsq_units)
         self._GSM.load()
+        self._logAction('info', f'Created {self._GSM.workersCount}, started: {self._GSM.startedWorkersCount}.')
         self._logAction('info', f'Global service manager loaded. Loading services to GSM...')
-        self._GSM.add(*self._services.values())
 
         self.__isInitialized = True
         loadTime = (datetime.now() - loadStartTime).total_seconds()
@@ -191,4 +191,9 @@ class Core(ICore):
         )
 
         # check if service`s id is correct
-        return bool( service.loadTask(task) )
+        addingResult = bool(service.loadTask(task)) # now we have loaded service
+        self._logAction('info', f'Adding new task to service {service}. Success - {addingResult}.')
+
+        # adding to the GSM to process task
+        self._GSM.add(service)
+        return addingResult

@@ -66,12 +66,13 @@ def main():
         configPath=os.path.dirname(__file__),
     )
     core = loader.core
+    core.start()
 
     def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> bool:
         adbClient.fastText(text)
         return True
 
-    core.addTaskToService('9887a836545a593453@3c067526', testFunc,'Hello world!')
+    core.addTaskToService('9887e0464a55483149@3c067526', testFunc, 'Hello world!')
 
 
 if __name__ == "__main__": main()

@@ -21,6 +21,7 @@ def syscall(function: Callable) -> Callable:
 
     @wraps(function)
     def wrapper(core, serviceId: str, *args, **kwargs) -> Any:
+        # core - "self" link analog
         # deleting AdbClient and AdbAuto from args
         args = [obj for obj in copy.deepcopy(args) if not isinstance(obj, (AdbClient, AdbAutomatization))]
 
@@ -35,6 +36,6 @@ def syscall(function: Callable) -> Callable:
         if not core.isReady:
             raise CoreIsNotStarted()
 
-        return function(service, *args, **kwargs)
+        return function(core,  service, *args, **kwargs)
 
     return wrapper
