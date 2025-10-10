@@ -5,7 +5,7 @@ import copy
 from functools import wraps
 from typing import Callable, Any
 
-from core.exceptions import NotFoundException, CoreIsNotStarted
+from core.exceptions import NotFoundException, CoreIsNotStarted, NotLoaded
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
@@ -37,5 +37,27 @@ def syscall(function: Callable) -> Callable:
             raise CoreIsNotStarted()
 
         return function(core,  service, *args, **kwargs)
+
+    return wrapper
+
+
+def afterLoad(function: Callable) -> Callable:
+    """
+        Decorator, which can guarantee that object has been loaded.
+        Use isLoaded property to check if object has been loaded.
+
+        Usage:
+            @afterLoad
+            def action(self, *args, **kwargs) -> Any: ...
+    """
+
+    @wraps(function)
+    def wrapper(obj, *args, **kwargs) -> Any:
+        if not hasattr(obj, 'isLoaded'):
+            raise NotFoundException(f'Object {obj} has no required "isLoaded" property.')
+        if not obj.isLoaded: raise NotLoaded()
+
+        result = function(obj, *args, **kwargs)
+        return result
 
     return wrapper

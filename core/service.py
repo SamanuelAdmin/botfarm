@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import time
 from abc import ABC, abstractmethod
 from typing import Callable, Any, List, Optional
@@ -36,7 +37,7 @@ class IService(ABC):
     def loadTask(self, task: ITask) -> int: ...
 
     @abstractmethod
-    async def start(self) -> bool: ...
+    def start(self) -> bool: ...
     @abstractmethod
     def wait(self) -> bool: ...
     @abstractmethod
@@ -169,13 +170,12 @@ class Service(IService):
                 self._blocker = True
 
 
-    async def start(self) -> bool:
-        # start via asyncio.run() or create_task
-        # will block a thread!!! if you use await or run
+    def start(self) -> bool:
+        # DO NOT USE ASYNCIO! Use threads instead
         self._blocker = False
 
         if not self._isIteratorStarted:
-            await asyncio.to_thread(self._iterator)
+            threading.Thread(target=self._iterator).start()
             self._isAlive = True
 
         return True

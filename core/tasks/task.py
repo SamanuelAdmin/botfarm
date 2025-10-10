@@ -23,7 +23,7 @@ class ITask(ABC):
 
     @property
     @abstractmethod
-    def taskId(self) -> int: ...
+    def taskId(self) -> str: ...
 
 
 
@@ -60,7 +60,7 @@ class Task(ITask):
         """
 
         if self._task: raise TaskAlreadyStarted(self)
-        self._dataQueue: multiprocessing.Queue = multiprocessing.Queue()
+        self._dataQueue = multiprocessing.Queue()
 
         def taskBody(task: ITask, queue: multiprocessing.Queue) -> None:
             try:
@@ -76,7 +76,7 @@ class Task(ITask):
         self._task = multiprocessing.Process(target=taskBody, args=(self, self._dataQueue), daemon=True)
         self._task.start()
 
-        # self._task.join() DO NOT ISE JOIN, it will block all main process
+        # self._task.join() DO NOT USE JOIN, it will block all main process
         # USE CHECKER INSTEAD
         while True:
             try:
