@@ -176,7 +176,7 @@ class Core(ICore):
 
 
     @syscall
-    def addTaskToService(self, service: IService|str, function: Callable[[AdbClient, AdbAutomatization, *tuple[Any, ...]], bool], *args, **kwargs) -> bool:
+    def addTaskToService(self, service: IService|str, function: ADB_SCRIPT_CONTRACT, *args, **kwargs) -> bool:
         """
             Syscall for adding a task to the service by its ID.
             Create task using function, args and kwargs.
@@ -187,7 +187,7 @@ class Core(ICore):
         task: ITask = Task(
             function,
             service.inner.get('adbClient'), service.inner.get('adbAuto'),
-            *args
+            *args, **kwargs
         )
 
         # check if service`s id is correct

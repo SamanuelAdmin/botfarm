@@ -61,3 +61,30 @@ def afterLoad(function: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+ADB_SCRIPT_CONTRACT = Callable[[AdbClient, AdbAutomatization, Any, Any], bool] # annotation for adbScript decorator
+
+def adbScript(function: ADB_SCRIPT_CONTRACT) -> Callable:
+    """
+        ADB script standard.
+
+        Format of functions:
+        def action(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs) -> bool: ...
+
+        Where:
+        - adbClient: AdbClient - API to system hardware part. Let control phones via ADB and get data
+        like screen dumps, screenshots etc. Required.
+        - adbAuto: AdbAutomatization - wrapper for adbClient, has automatization functions,
+        makes scripts easy-to-read, simpler to write and more compact.
+        - args and kwargs: useful information for this script, like logins, text, posts info etc.
+    """
+
+    @wraps(function)
+    def wrapper(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs):
+        result = function(
+            adbClient, adbAuto, *args, **kwargs
+        )
+        return result
+
+    return wrapper

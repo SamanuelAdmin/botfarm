@@ -2,16 +2,16 @@ import multiprocessing
 from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
+
 load_dotenv()
 import os, sys
-
 
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 # need to create_all! delete after adding migrations
 from db.data import *
-from core.tasks.task import Task
 from core.loader import Loader
+from core.middleware import adbScript
 
 
 
@@ -42,7 +42,7 @@ def startDatabaseAdminPanel():
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-
+@adbScript
 def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> bool:
     adbClient.fastText(text)
     return True
