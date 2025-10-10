@@ -43,6 +43,10 @@ def startDatabaseAdminPanel():
 
 
 
+def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> bool:
+    adbClient.fastText(text)
+    return True
+
 def main():
     clArgs = sys.argv[1:]
     mode = getArgByFlag(clArgs, "-mode")
@@ -67,10 +71,6 @@ def main():
     )
     core = loader.core
     core.start()
-
-    def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> bool:
-        adbClient.fastText(text)
-        return True
 
     core.addTaskToService('9887e0464a55483149@3c067526', testFunc, 'Hello world!')
 

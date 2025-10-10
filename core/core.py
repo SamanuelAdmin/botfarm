@@ -153,7 +153,7 @@ class Core(ICore):
 
         self._GSM = GlobalServiceManager(self._configurator.max_gsq_units)
         self._GSM.load()
-        self._logAction('info', f'Created {self._GSM.workersCount}, started: {self._GSM.startedWorkersCount}.')
+        self._logAction('info', f'Created and started {self._GSM.workersCount} workers.')
         self._logAction('info', f'Global service manager loaded. Loading services to GSM...')
 
         self.__isInitialized = True
