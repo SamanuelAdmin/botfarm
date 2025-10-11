@@ -1,4 +1,4 @@
-from .scripts_builder import *
+from scripts.OLD.scripts_builder import *
 
 
 def openViaLink(adb: AdbClient, link: str) -> bool:

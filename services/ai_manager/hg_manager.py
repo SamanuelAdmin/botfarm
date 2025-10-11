@@ -180,7 +180,6 @@ class ModelRequestsManager:
 
 
     def request(self, text: str) -> dict[str, str]:
-        request = json.dumps({"role": "user", "content": text})
         requestTokens = self._tokenizer(text, return_tensors='pt')
 
 

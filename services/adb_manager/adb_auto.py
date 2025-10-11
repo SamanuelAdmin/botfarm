@@ -1,10 +1,11 @@
 import random
 import time
-from dataclasses import dataclass, field
+from functools import wraps
+from json import JSONDecodeError
 from typing import Tuple, Callable, Any, Optional
-
 import bs4
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
 import warnings
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 import json
@@ -13,72 +14,193 @@ from services.adb_manager import AdbClient, Dot
 
 
 
-
 class AdbAutomatization:
     """
-        Automatization for screen dump parsing, works via ADB (adb client)
+        Automatization for simple adb processes, works via ADB (adb client)
+        AdbClient wrapper - for more functionality
         Isolated, each only for one client
+        Parser, randomizer (for delays) and adb controller in one class
     """
 
-    def __init__(self, adbClient: AdbClient):
+    def __init__(self, adbClient: AdbClient, parsingMethod: str='lxml'):
+        self._parsingMethod = parsingMethod
         self._adbClient: AdbClient = adbClient
 
-    def _getRandomDelay(self, *delay: tuple[float]) -> float:
-        return random.randint(
-            *map(lambda x: int(x * 1000), sorted(delay))
-        ) / 1000
 
-
-    # SCREEN ANALYZE METHODS
-
-    def getScreenDump(self) -> str:
+    @property
+    def screenDump(self) -> str:
+        """
+            Current screen dump.
+        """
         return self._adbClient.getScreenDump()
 
-    def findElement(self, dump: str, elementAttrs: dict[str, str]) -> Optional[Tuple[Dot, int, int]]:
-        element = self.getElementSoup(dump, elementAttrs)
-        if not element: return None
 
-        elementBounds = element.get('bounds')
+    def randomDelay(self, *args) ->  float:
+        """
+            Make delay by gotten args.
+            1 arg - set delay
+            2 args - random delay, from arg 0 to arg 1
+            > 2 args - random delay, will be chosen by choice method
+            no args - 1-second delay
+        """
+        delay: float = 1.0 # base delay, will be changed by inputted args
+
+        if len(args) == 1: delay = args[0]
+        elif len(args) == 2: delay = random.randint(*args)
+        elif len(args) > 2: delay = random.choice(args)
+
+        time.sleep(delay)
+        return delay
+
+    # inner parser
+    def getDumpSoup(self, dump: str) -> bs4.BeautifulSoup:
+        return BeautifulSoup(dump, self._parsingMethod)
+
+
+    def getDumpElement(self, dump: str, attrs: dict[str, str]) -> Optional[bs4.element.Tag]:
+        """
+            Find element by its inner attributes.
+            For example:
+            Element: <node text="Hello" id="12"></node>
+            Attrs: {"text": "Hello", "id": 12}
+        """
+
+        soup = self.getDumpSoup(dump)
+        return soup.find('node', attrs=attrs)
+
+
+    def getElementBounds(self, element: bs4.element.Tag) -> Optional[Tuple[Dot, Dot, Dot]]:
+        """
+            Get bounds (coordinates) of element by its inner attributes.
+            Example:
+            0, 0    ___   30, 0
+                   |___|
+            0, 15         30, 15
+
+            Output:
+                1: Dot(0, 0) - start point (top, left)
+                2: Dot(30, 15) - end point (bottom, right)
+                3: Dot(8, 15) - center
+            Returns in NON-RANDOM mode!
+        """
+
+        elementBounds: str = element.get('bounds')
         if not elementBounds: return None
 
-        x1, y1, x2, y2 = json.loads(elementBounds.replace('][', ','))
+        # convert to list using json loads (in json format only!)
+        try:
+            x1, y1, x2, y2 = json.loads( elementBounds.replace('][', ',') )
+        except (ValueError, JSONDecodeError): return None
+
         elementCenter = ( (x1 + x2) / 2 , (y1 + y2) / 2 )
-        return Dot(*elementCenter), x2 - x1, y2 - y1
-
-    def getElementSoup(self, dump: str, elementAttrs: dict[str, str]) -> Optional[bs4.BeautifulSoup]:
-        soup = BeautifulSoup(dump, 'lxml')
-        element = soup.find('node', attrs=elementAttrs)
-        return element
+        # return Dot(*elementCenter), x2 - x1, y2 - y1 - OLD FORMAT
+        return Dot(x1, y1), Dot(x2, y2), Dot(elementCenter[0], elementCenter[1])
 
 
-    def clickOnElement( self,
-            elementAttrs: dict[str, str],
-            delay: tuple[float]=(0.2, 0.6),
-            randomizK: float=0.3, xCorrector: int=0, yCorrector: int=0,
-            longClick=False, longClickDelay: float=0.2,
-            dump: Optional[str]=None ) -> bool:
+    def clickInRect(self, dotTop: Dot, dotBottom: Dot, *_, clickDuration: Optional[int]=None) -> bool:
+        """
+            Randomly click in rectangle sector.
+            Take sector by its top and bottom positions.
+            dotTop - top, left position
+            dotBottom - bottom, right position
+            clickDuration - duration of the click. If none - ordinary click.
+            Other args will be ignored (to use it with other func just by *).
+        """
 
-        dump = dump if dump else self.getScreenDump()
-        findResult = self.findElement(dump, elementAttrs)
-        if not findResult: return False
+        width, height = abs(dotBottom.x - dotTop.x), abs(dotBottom.y - dotTop.y)
 
-        elDot, elW, elH = findResult
-        elDot.x = elDot.x + xCorrector
-        elDot.y = elDot.y + yCorrector
-        elDot = Dot(elDot.x, elDot.y).make_random(l_x=int(elW * randomizK), l_y=int(elH * randomizK))
+        # get random values to click randomly
+        randomX, randomY = map(lambda x: random.randint(0, x), (width, height))
 
-        adbResult = self._adbClient.swipe(elDot, elDot, swipeTime=longClickDelay) if longClick else self._adbClient.tap(elDot)
-
-        # adding delay between actions
-        time.sleep(self._getRandomDelay(*delay))
-        return adbResult
+        # click by new dot
+        clickDot = Dot(dotTop.x + randomX, dotTop.y + randomY)
+        return self._adbClient.swipe(clickDot, clickDot, swipeTime=clickDuration) \
+            if clickDuration else self._adbClient.tap(clickDot)
 
 
-    def waitAndClickOnElement(self, elementAttrs: dict[str, str], iterCount=10, delay: tuple[float]=(0.5, 1)) -> bool:
-        attempt, res = 0, False
+    def swipeInRect(self, dotTop: Dot, dotBottom: Dot, *_, swipeDuration: int=200) -> bool:
+        """
+            Swipe by random vector in rectangle sector.
+            Take sector by its top and bottom positions.
+            dotTop - top, left position
+            dotBottom - bottom, right position
+            swipeDuration - duration of the swipe (time in ms, 1000 ms = 1 sec)
+            Other args will be ignored (to use it with other func just by *).
+        """
 
-        while not res and attempt != iterCount:
-            res = self.clickOnElement(elementAttrs, delay)
-            attempt += 1
+        # get rectangle position
+        x1, y1 = dotTop.x, dotTop.y
+        x2, y2 = dotBottom.x, dotBottom.y
 
-        return res
+        rand1 = random.randint(x1, x2)
+        rand2 = random.randint(x1, x2)
+
+        # create dots and swipe by themes
+        dot1, dot2 = Dot(rand1, y1).make_random(), Dot(rand2, y2).make_random()
+        return self._adbClient.swipe(dot1, dot2, swipeTime=swipeDuration)
+
+
+    def waitForElement(self, attrs: dict[str, str], delay: float=0.5, postActions=None, *args) -> bool:
+        """
+            Wait until element will be found.
+            Looking for element by its inner attributes via beautiful soup.
+            delay - sleep action between every iteration.
+            Also has a past actions solution.
+            Can start functions (which was decorated as post action) after finding element.
+            args - arguments proxy to post actions.
+
+            Returns True if all post actions were successful. False - if not.
+        """
+
+        element: bs4.element.Tag
+
+        while True:
+            # getting page dump and its soup
+            element = self.getDumpElement(self.screenDump, attrs)
+            if not element is None: break # if element was found
+
+            # waiting before new iterations
+            time.sleep(delay)
+
+        # check for post actions
+        if len(postActions) > 0:
+            for postAction in postActions:
+                if not postAction(self._adbClient, self, element, *args):
+                    return False
+
+        return True
+
+
+
+
+POST_ACTION_CONTRACT = Callable[[AdbClient, AdbAutomatization, bs4.element.Tag, *tuple[Any]], bool]
+
+def postAction(function: POST_ACTION_CONTRACT):
+    """
+        Type of functions that can be called from waitUntil functions or after any other conditions.
+
+    """
+
+    @wraps(function)
+    def wrapper(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs):
+        if hasattr(AdbAutomatization, function.__name__):
+            raise Exception("Cannot call AdbAutomatization method like a post action function (to avoid recursion).")
+
+        result = function(adbClient, adbAuto, *args, **kwargs)
+        return result
+
+    return wrapper
+
+
+
+class PostActions:
+    """
+        Built-in post actions.
+    """
+
+    @postAction
+    def clickOnElement(self, adbClient: AdbClient, adbAuto: AdbAutomatization, element) -> bool:
+        bounds = adbAuto.getElementBounds(element)
+        if not bounds: return False
+
+        return adbAuto.clickInRect(*bounds)
