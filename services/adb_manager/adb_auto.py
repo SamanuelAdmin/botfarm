@@ -14,7 +14,34 @@ from services.adb_manager import AdbClient, Dot
 
 
 
-class AdbAutomatization:
+class _AdbAutomatizationInterface:
+    """
+        Interface for AbAutomatization annotation
+    """
+    pass
+
+
+POST_ACTION_CONTRACT = Callable[[AdbClient, _AdbAutomatizationInterface, bs4.element.Tag, *tuple[Any]], bool]
+
+def postAction(function: POST_ACTION_CONTRACT):
+    """
+        Type of functions that can be called from waitUntil functions or after any other conditions.
+
+    """
+
+    @wraps(function)
+    def wrapper(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs):
+        if hasattr(AdbAutomatization, function.__name__):
+            raise Exception("Cannot call AdbAutomatization method like a post action function (to avoid recursion).")
+
+        result = function(adbClient, adbAuto, *args, **kwargs)
+        return result
+
+    return wrapper
+
+
+
+class AdbAutomatization(_AdbAutomatizationInterface):
     """
         Automatization for simple adb processes, works via ADB (adb client)
         AdbClient wrapper - for more functionality
@@ -140,7 +167,7 @@ class AdbAutomatization:
         return self._adbClient.swipe(dot1, dot2, swipeTime=swipeDuration)
 
 
-    def waitForElement(self, attrs: dict[str, str], delay: float=0.5, postActions: list[Callable]=[], *args) -> bool:
+    def waitForElement(self, attrs: dict[str, str], delay: float=0.5, postActions: tuple[POST_ACTION_CONTRACT]=(), *args) -> bool:
         """
             Wait until element will be found.
             Looking for element by its inner attributes via beautiful soup.
@@ -156,41 +183,23 @@ class AdbAutomatization:
 
         while True:
             # getting page dump and its soup
-            element = self.getDumpElement(self.screenDump, attrs)
-            print(bool(element), element)
-            if bool(element): break # if element was found
+            currentDump: str = self.screenDump
+            element = self.getDumpElement(currentDump, attrs)
+            if element: break # if element was found
 
             # waiting before new iterations
             time.sleep(delay)
 
         # check for post actions
-        if len(postActions) > 0:
-            for postAction in postActions:
-                if not postAction(self._adbClient, self, element, *args):
-                    return False
+        try:
+            if len(postActions) > 0:
+                for action in postActions:
+                    if not action(self._adbClient, self, element, *args):
+                        return False
+        except Exception as error: print(error)
 
         return True
 
-
-
-
-POST_ACTION_CONTRACT = Callable[[AdbClient, AdbAutomatization, bs4.element.Tag, *tuple[Any]], bool]
-
-def postAction(function: POST_ACTION_CONTRACT):
-    """
-        Type of functions that can be called from waitUntil functions or after any other conditions.
-
-    """
-
-    @wraps(function)
-    def wrapper(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs):
-        if hasattr(AdbAutomatization, function.__name__):
-            raise Exception("Cannot call AdbAutomatization method like a post action function (to avoid recursion).")
-
-        result = function(adbClient, adbAuto, *args, **kwargs)
-        return result
-
-    return wrapper
 
 
 
@@ -199,8 +208,9 @@ class PostActions:
         Built-in post actions.
     """
 
+    @classmethod
     @postAction
-    def clickOnElement(self, adbClient: AdbClient, adbAuto: AdbAutomatization, element) -> bool:
+    def clickOnElement(cls, adbClient: AdbClient, adbAuto: AdbAutomatization, element) -> bool:
         bounds = adbAuto.getElementBounds(element)
         if not bounds: return False
 

@@ -4,6 +4,8 @@ from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 
+from scripts.selling_srevices_scripts import followAccount
+
 load_dotenv()
 import os, sys
 
@@ -76,7 +78,7 @@ def main():
     from scripts.selling_srevices_scripts import likePost
     core.addTaskToService(
         '9889ba304138394552@3c067526',
-        likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/'
+        followAccount, 'https://www.instagram.com/psptm5/'
     )
 
     time.sleep(60)
