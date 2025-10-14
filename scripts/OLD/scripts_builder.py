@@ -13,18 +13,18 @@ from services.adb_manager.adb_auto import AdbAutomatization
 
 
 
-# def loadScreenShotAsCv2(adb: AdbClient) -> np.ndarray|None:
-#     adb.makeScreenshot()
-#     path = adb.downloadFile()
-#     return cv2.imread(path) if path else None
+def loadScreenShotAsCv2(adb: AdbClient) -> np.ndarray|None:
+    adb.makeScreenshot()
+    path = adb.downloadFile()
+    return cv2.imread(path) if path else None
 
-# def tapBy4Numbers(adb: AdbClient, args: tuple[int]|list[int]) -> bool:
-#     adb.tap(
-#         Dot(
-#             int(args[0] + args[2] / 2),
-#             int(args[1] + args[3] / 2)
-#         ).make_random(int(args[2] / 2), int(args[3] / 2))
-#     )
+def tapBy4Numbers(adb: AdbClient, args: tuple[int]|list[int]) -> bool:
+    adb.tap(
+        Dot(
+            int(args[0] + args[2] / 2),
+            int(args[1] + args[3] / 2)
+        ).make_random(int(args[2] / 2), int(args[3] / 2))
+    )
 
 def randomDelay(*args):
     if len(args) == 1: time.sleep(args[0])
@@ -32,48 +32,48 @@ def randomDelay(*args):
     elif len(args) > 2: time.sleep( random.choice(args) )
 
 
-# def checkRecognizedTextValues(result: dict[str, list[int]]) -> bool:
-#     return all(list(result.values())) and len(result) != 0
-#
-# def checkTextOnScreen(adb: AdbClient, recognizer: Recognizer, text: str) -> bool:
-#     text = text.lower().split(' ')
-#     screen = loadScreenShotAsCv2(adb)
-#     recognitionResult = recognizer.findTextOnImage(screen, text)
-#
-#     return checkRecognizedTextValues(recognitionResult)
+def checkRecognizedTextValues(result: dict[str, list[int]]) -> bool:
+    return all(list(result.values())) and len(result) != 0
+
+def checkTextOnScreen(adb: AdbClient, recognizer: Recognizer, text: str) -> bool:
+    text = text.lower().split(' ')
+    screen = loadScreenShotAsCv2(adb)
+    recognitionResult = recognizer.findTextOnImage(screen, text)
+
+    return checkRecognizedTextValues(recognitionResult)
 
 
-# def clickViaTemplate(adb: AdbClient, recognizer: Recognizer, templateName: str) -> bool|list[int]:
-#     screen = loadScreenShotAsCv2(adb)
-#     elementCords = recognizer.findTemplateOnImage(screen, templateName)
-#     if not elementCords: return False
-#
-#     tapBy4Numbers(adb, elementCords)
-#     return elementCords
-#
-#
-# def clickViaScreenText(adb: AdbClient, recognizer: Recognizer, text: str, xCorrector=0, yCorrector=0) -> bool|list[int]:
-#     text = text.lower().split(' ')
-#
-#     screen = loadScreenShotAsCv2(adb)
-#     clickableTextParts = recognizer.findTextOnImage(screen, text)
-#
-#     if not checkRecognizedTextValues(clickableTextParts):
-#         return False
-#
-#     textCenters = [
-#         ( int(part[0] + part[2] / 2), int(part[1] + part[3] / 2) ) \
-#         for part in clickableTextParts.values()
-#     ]
-#
-#     clickableX, clickableY = [
-#         sum([el[0] for el in textCenters]) / len(textCenters),
-#         sum([el[1] for el in textCenters]) / len(textCenters),
-#     ]
-#
-#     cords = [clickableX + xCorrector, clickableY + yCorrector, 10, 2]
-#     tapBy4Numbers(adb, cords)
-#     return cords
+def clickViaTemplate(adb: AdbClient, recognizer: Recognizer, templateName: str) -> bool|list[int]:
+    screen = loadScreenShotAsCv2(adb)
+    elementCords = recognizer.findTemplateOnImage(screen, templateName)
+    if not elementCords: return False
+
+    tapBy4Numbers(adb, elementCords)
+    return elementCords
+
+
+def clickViaScreenText(adb: AdbClient, recognizer: Recognizer, text: str, xCorrector=0, yCorrector=0) -> bool|list[int]:
+    text = text.lower().split(' ')
+
+    screen = loadScreenShotAsCv2(adb)
+    clickableTextParts = recognizer.findTextOnImage(screen, text)
+
+    if not checkRecognizedTextValues(clickableTextParts):
+        return False
+
+    textCenters = [
+        ( int(part[0] + part[2] / 2), int(part[1] + part[3] / 2) ) \
+        for part in clickableTextParts.values()
+    ]
+
+    clickableX, clickableY = [
+        sum([el[0] for el in textCenters]) / len(textCenters),
+        sum([el[1] for el in textCenters]) / len(textCenters),
+    ]
+
+    cords = [clickableX + xCorrector, clickableY + yCorrector, 10, 2]
+    tapBy4Numbers(adb, cords)
+    return cords
 
 
 def smallSwipe(adb):
@@ -84,15 +84,15 @@ def smallSwipe(adb):
     )
 
 
-# def waitUntilTextFind(adb: AdbClient, recognizer, text: str, iter: int=-1) -> bool:
-#     iter = copy.copy(iter)
-#
-#     while iter != 0:
-#         iter -= 1
-#         randomDelay(1)
-#         if checkTextOnScreen(adb, recognizer, text): return True
-#
-#     return False
+def waitUntilTextFind(adb: AdbClient, recognizer, text: str, iter: int=-1) -> bool:
+    iter = copy.copy(iter)
+
+    while iter != 0:
+        iter -= 1
+        randomDelay(1)
+        if checkTextOnScreen(adb, recognizer, text): return True
+
+    return False
 
 
 def swipeUntilFindElement(

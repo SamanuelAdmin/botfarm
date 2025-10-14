@@ -69,6 +69,13 @@ class Core(ICore):
         self.__isConfigured: bool = False
         self._isStarted: bool = False
 
+    @property
+    def ready(self):
+        """
+            True if core is loaded and started.
+        """
+        return self.__isInitialized and self.__isConfigured
+
 
     def _logAction(self, _type: str, *info):
         self.__logger.add(
@@ -162,9 +169,6 @@ class Core(ICore):
         return True
 
 
-    @property
-    def isReady(self) -> bool: return self._isStarted
-
     def start(self) -> bool:
         if not self.__isInitialized:
             raise CoreIsNotInitialized()
@@ -173,6 +177,12 @@ class Core(ICore):
         self._isStarted = True
         return True
 
+
+    def stop(self):
+        self._GSM.kill()
+
+        self._isStarted = False
+        self._logAction('info', 'Core stopped.')
 
 
     @syscall

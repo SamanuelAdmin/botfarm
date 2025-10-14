@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
@@ -72,7 +73,14 @@ def main():
     core = loader.core
     core.start()
 
-    core.addTaskToService('9887e0464a55483149@3c067526', testFunc, 'Hello world!')
+    from scripts.selling_srevices_scripts import likePost
+    core.addTaskToService(
+        '9889ba304138394552@3c067526',
+        likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/'
+    )
+
+    time.sleep(60)
+    core.stop()
 
 
 if __name__ == "__main__": main()

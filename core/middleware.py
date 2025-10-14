@@ -28,13 +28,14 @@ def syscall(function: Callable) -> Callable:
         # deleting AdbClient and AdbAuto from kwargs
         kwargs = {key: value for key, value in copy.deepcopy(kwargs).items() if not isinstance(value, (AdbClient, AdbAutomatization))}
 
+        # checking if core is started
+        if not core.ready:
+            raise CoreIsNotStarted()
+
         # core - self, core obj
         # check is service is exists
         service = core._services.get(serviceId)
         if not service: raise NotFoundException(f'Service {serviceId} not found.')
-
-        if not core.isReady:
-            raise CoreIsNotStarted()
 
         return function(core,  service, *args, **kwargs)
 
@@ -61,6 +62,7 @@ def afterLoad(function: Callable) -> Callable:
         return result
 
     return wrapper
+
 
 
 ADB_SCRIPT_CONTRACT = Callable[[AdbClient, AdbAutomatization, Any, Any], bool] # annotation for adbScript decorator

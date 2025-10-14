@@ -140,7 +140,7 @@ class AdbAutomatization:
         return self._adbClient.swipe(dot1, dot2, swipeTime=swipeDuration)
 
 
-    def waitForElement(self, attrs: dict[str, str], delay: float=0.5, postActions=None, *args) -> bool:
+    def waitForElement(self, attrs: dict[str, str], delay: float=0.5, postActions: list[Callable]=[], *args) -> bool:
         """
             Wait until element will be found.
             Looking for element by its inner attributes via beautiful soup.
@@ -157,7 +157,8 @@ class AdbAutomatization:
         while True:
             # getting page dump and its soup
             element = self.getDumpElement(self.screenDump, attrs)
-            if not element is None: break # if element was found
+            print(bool(element), element)
+            if bool(element): break # if element was found
 
             # waiting before new iterations
             time.sleep(delay)
@@ -204,3 +205,5 @@ class PostActions:
         if not bounds: return False
 
         return adbAuto.clickInRect(*bounds)
+
+

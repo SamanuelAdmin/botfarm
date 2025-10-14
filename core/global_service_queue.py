@@ -280,6 +280,12 @@ class GlobalServiceManager:
         self._isLoaded = True
 
 
-    def kill(self) -> None:
-        # TODO: MAKE KILLER FOR ALL WORKERS PROCESS (via terminate)
-        pass
+    def kill(self) -> bool:
+        """
+            Hard kill the workers. Terminate all processes.
+            Use it only in "hard" situation.
+        """
+        for process in list(self._workersProcesses.values()):
+            process.terminate()
+
+        return True
