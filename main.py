@@ -15,6 +15,7 @@ from services.adb_manager.adb_auto import AdbAutomatization
 from db.data import *
 from core.loader import Loader
 from core.middleware import adbScript
+from core.logger import Logger, setup_default_logger
 
 
 
@@ -57,6 +58,10 @@ def main():
     from db.connector import DatabaseConnector
     DatabaseConnector().create_all()
 
+    # init base logger and create local logger object instance (for this file only)
+    setup_default_logger()
+    logger = Logger()
+
     if mode == "debug":
         # block main process by starting admin panels and API
         startDatabaseAdminPanel()
@@ -67,7 +72,7 @@ def main():
         databaseAdminPanelProcess = multiprocessing.Process(target=startDatabaseAdminPanel)
         databaseAdminPanelProcess.start()
 
-
+    
     loader = Loader(
         configFileName='core_configs.json',
         configPath=os.path.dirname(__file__),

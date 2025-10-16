@@ -17,6 +17,9 @@ from services.adb_manager.exceptions import IncorrectStatusCodeException
 from services.db_services import accounts_manager, adb_hub_manager
 
 
+
+logger = Logger()
+
 class ICore(ABC):
     __metaclass__ = singleton.Singleton
 
@@ -84,19 +87,15 @@ class Core(ICore):
         return list(self._services.keys())
 
 
-    def _logAction(self, _type: str, *info):
-        self.__logger.add(
-            Log(_type, *info, setDatetime=True)
-        )
 
     def _createServices(self, hubUUID: str) -> int:
         adbHubManager = self._hubs.get(hubUUID)
         if not adbHubManager:
-            self._logAction('error', f'Cannot find adb hub in HUB TABLE by UUID: {hubUUID}.')
+            logger.error(f'Cannot find adb hub in HUB TABLE by UUID: {hubUUID}.')
             raise AdbManagerNotFound(f'Cannot find AdbManager (adb hub) #{hubUUID} in HUBD TABLE.')
 
         adbHubManager.loadAllSerials()
-        self._logAction('info', f'{hubUUID} Loaded all adb clients. Creating services...')
+        logger.info(f'{hubUUID} Loaded all adb clients. Creating services...')
 
         allLoadedClients: dict[str, AdbClient] = adbHubManager.getAllLoadedSerials()
 
@@ -111,7 +110,7 @@ class Core(ICore):
             self._services[serviceId] = newService
 
         newServicesCount = len(allLoadedClients.keys())
-        self._logAction('info', f'{hubUUID} Loaded all ({newServicesCount}) adb clients.')
+        logger.info(f'{hubUUID} Loaded all ({newServicesCount}) adb clients.')
 
         return newServicesCount
 
@@ -124,7 +123,7 @@ class Core(ICore):
             if hubUUID is None:
                 raise IncorrectStatusCodeException(404, adbManager.api)
         except IncorrectStatusCodeException:
-            self._logAction('error', f'Cannot get UUID of adb hub. Skipped.')
+            logger.error(f'Cannot get UUID of adb hub. Skipped.')
             return False
 
 
@@ -133,7 +132,7 @@ class Core(ICore):
         # loading hub
         self._hubs[hubUUID].loadAllSerials()
         self._createServices(hubUUID)
-        self._logAction('info', f'Loaded new hub with UUID: {hubUUID}.')
+        logger.info(f'Loaded new hub with UUID: {hubUUID}.')
 
         return True
 
@@ -156,7 +155,7 @@ class Core(ICore):
         self._accountsManager = accounts_manager.AccountsManager()
 
         loadStartTime = datetime.now()
-        self._logAction('info', 'Start loading...')
+        logger.info('Start loading...')
 
         # fill out HUBS TABLE and SERVICES TABLE
         for adbHubRecord in self._adbHubManager.getAll():
@@ -167,12 +166,12 @@ class Core(ICore):
 
         self._GSM = GlobalServiceManager(self._configurator.max_gsq_units)
         self._GSM.load()
-        self._logAction('info', f'Created and started {self._GSM.workersCount} workers.')
-        self._logAction('info', f'Global service manager loaded. Loading services to GSM...')
+        logger.info(f'Created and started {self._GSM.workersCount} workers.')
+        logger.info(f'Global service manager loaded. Loading services to GSM...')
 
         self.__isInitialized = True
         loadTime = (datetime.now() - loadStartTime).total_seconds()
-        self._logAction('info', f'Load finished in {loadTime}s.')
+        logger.info(f'Load finished in {loadTime}s.')
         return True
 
 
@@ -180,7 +179,7 @@ class Core(ICore):
         if not self.__isInitialized:
             raise CoreIsNotInitialized()
 
-        self._logAction('info', 'Core started.')
+        logger.info('Core started.')
         self._isStarted = True
         return True
 
@@ -189,7 +188,7 @@ class Core(ICore):
         self._GSM.kill()
 
         self._isStarted = False
-        self._logAction('info', 'Core stopped.')
+        logger.info('Core stopped.')
 
 
     @syscall
@@ -209,7 +208,7 @@ class Core(ICore):
 
         # check if service`s id is correct
         addingResult = bool(service.loadTask(task)) # now we have loaded service
-        self._logAction('info', f'Adding new task to service {service}. Success - {addingResult}.')
+        logger.info(f'Adding new task to service {service}. Success - {addingResult}.')
 
         # adding to the GSM to process task
         self._GSM.add(service)

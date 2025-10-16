@@ -98,18 +98,6 @@ class ILogger(ABC):
 
 LOG_HANDLER_CONTRACT = Callable[[Log], None]
 
-def logHandler(function: LOG_HANDLER_CONTRACT):
-    """
-        Function decorator for logs handlers (logs processors).
-    """
-
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-        return function(*args, **kwargs)
-
-    return wrapper
-
-
 
 class Logger(ILogger):
     __metaclass__ = Singleton
@@ -121,7 +109,7 @@ class Logger(ILogger):
             logsHandler: Optional[Iterable[LOG_HANDLER_CONTRACT]]=None ):
         self._setDatetime = setDatetime
         self._loggerQueue = LoggerQueue()
-        self.addLogHandler(*logsHandler)
+        self.addLogHandler(*logsHandler if logsHandler else [])
         self._lock = threading.Lock()
 
 
@@ -176,7 +164,6 @@ class Logger(ILogger):
 
 
 # adding base handlers
-@logHandler
 def consoleHandler(log: Log):
     print(log)
 
