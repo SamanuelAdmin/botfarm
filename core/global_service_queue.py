@@ -6,10 +6,14 @@ import multiprocessing
 from multiprocessing.connection import Connection
 
 from core.middleware import afterLoad
+from core.logger import Logger, Log
 from core.service import IService
 from core.exceptions import *
 from meta.singleton import Singleton
 
+
+
+logger = Logger()
 
 
 class Worker:
@@ -69,6 +73,10 @@ class Worker:
 
         # stop iterator
         self._isAlive = False
+
+        logger.add(
+            Log(f'{self.workerPrefix}_{self.id}')
+        )
         # terminate worker process, if its in worker process
         if multiprocessing.current_process() \
             .name.startswith(self.workerPrefix): os._exit(0)

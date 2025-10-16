@@ -4,7 +4,7 @@ from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 
-from scripts.selling_srevices_scripts import followAccount
+from scripts.selling_services_scripts import followAccount
 
 load_dotenv()
 import os, sys
@@ -75,11 +75,12 @@ def main():
     core = loader.core
     core.start()
 
-    from scripts.selling_srevices_scripts import likePost
-    core.addTaskToService(
-        '9889ba304138394552@3c067526',
-        followAccount, 'https://www.instagram.com/psptm5/'
-    )
+    for serviceId in core.servicesTable:
+        core.addTaskToService(
+            #'9889ba304138394552@3c067526',
+            serviceId,
+            followAccount, 'https://www.instagram.com/psptm5/'
+        )
 
     time.sleep(60)
     core.stop()

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Callable, Any
 
 from core.core_configurator import CoreConfigurator
-from core.logger import Logger, Log
+from core.logger import Logger
 from core.service import IService, Service
 from core.exceptions import *
 from core.global_service_queue import GlobalServiceManager
@@ -50,9 +50,9 @@ class Core(ICore):
     __metaclass__ = Singleton
 
 
-    def __init__(self, logger: Optional[Logger]=None):
+    def __init__(self):
         # gotten from loader (all private)
-        self.__logger = logger
+        self.__logger = Logger()
 
         # tables
         self._services: dict[str, IService] = {}
@@ -75,6 +75,13 @@ class Core(ICore):
             True if core is loaded and started.
         """
         return self.__isInitialized and self.__isConfigured
+
+    @property
+    def servicesTable(self) -> list[str]:
+        """
+            Returns services IDs in format: phone_serial@hub_id.
+        """
+        return list(self._services.keys())
 
 
     def _logAction(self, _type: str, *info):
