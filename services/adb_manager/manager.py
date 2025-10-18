@@ -20,11 +20,11 @@ class AdbClient:
         self.connector = connector
         self.deviceLink = deviceLinkPattern.format(serial)
 
-    def sendAdbCommand(self, command: str) -> dict[str, Any]:
+    def sendAdbCommand(self, command: str, daemon: bool=False, timeout: Optional[float]=None) -> dict[str, Any]:
         response = self.connector.apiRequest(
             self.deviceLink, data=json.dumps({
-                'command': command
-            }), method='post'
+                'command': command, 'daemon': daemon
+            }), method='post', timeout=timeout
         )
 
         if isinstance(response, int):
@@ -55,7 +55,7 @@ class AdbClient:
                 case '"': letter = '\\"'
                 case ' ': letter = '%s'
 
-            self.sendAdbCommand( f'input text "{letter}"' )
+            self.sendAdbCommand( f'input text "{letter}"', daemon=True )
             time.sleep(
                 random.randint(delayMicros[0], delayMicros[1]) / 1000
             )
@@ -94,7 +94,7 @@ class AdbClient:
         return None
 
 
-    def fastText(self, message: str, delay: tuple[int]=(0.01, 0.07)) -> bool:
+    def fastText(self, message: str, delay: tuple[int, int]=(0.01, 0.07)) -> bool:
         safe_message = shlex.quote(message)
 
         cmd = (
@@ -108,7 +108,8 @@ class AdbClient:
             'done'
         )
 
-        return bool(self.sendAdbCommand(cmd))
+        # default timeout - 1 second for every symbol, it also can give 408 status code (response timeout)
+        return bool(self.sendAdbCommand(cmd, timeout=1*len(safe_message)))
 
     def deleteText(self, length: int=1, fast: bool=False, sec: float=0.5) -> bool:
         self.sendAdbCommand('input keyevent KEYCODE_MOVE_END')

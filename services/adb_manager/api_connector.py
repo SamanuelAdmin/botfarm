@@ -21,7 +21,7 @@ class ApiConnector:
             params: Optional[dict[Any, Any]]=None,
             headers: Optional[dict[Any, Any]]=None,
             data: Optional[str]=None,
-            method='get'
+            method='get', timeout: Optional[float]=None
     ) -> dict[str, Any]|int|Any:
         assert method.lower() in ['get', 'post', 'put', 'delete']
 
@@ -29,7 +29,7 @@ class ApiConnector:
             r = requests.request(
                 method.lower(), self._adbHubApi + url,
                 params=params, headers=headers, data=data,
-                timeout=self._timeout
+                timeout=timeout if timeout else self._timeout
             )
         except requests.exceptions.Timeout: return 408
 
