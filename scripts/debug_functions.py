@@ -4,6 +4,7 @@ from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
 
+logger = Logger()
 
 @adbScript
 def getScreenDump(adb: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs) -> bool:
@@ -18,4 +19,5 @@ def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> boo
     try: adbClient.fastText(text)
     except Exception as e: print(e)
 
+    logger.debug('Done')
     return True

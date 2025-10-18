@@ -19,6 +19,7 @@ from services.adb_manager.adb_auto import AdbAutomatization, PostActions
 from services.fa2 import get2FACode
 
 
+logger = Logger()
 
 @adbScript
 def inputCredsPage(adb: AdbClient, adbAuto: AdbAutomatization, login: str, password: str, *args) -> bool:

@@ -28,8 +28,13 @@ class WorkerStdout(IStdout):
         self._baseStdout = sys.stdout
         sys.stdout = self
 
+    def __del__(self):
+        sys.stdout = sys.__stdout__ # restore previous stdout
+
     def write(self, *args: *tuple[str]) -> None:
-        self._interrupt(' '.join(args))
+        formatString = ' '.join(args).replace('\n', '')
+        if len(formatString) == 0: return
+        self._interrupt(formatString)
 
     def flush(self) -> None:
         self._baseStdout.flush()

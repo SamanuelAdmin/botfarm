@@ -77,7 +77,7 @@ def main():
     # for i in range(1):
     core.addTaskToService(
         #'9889ba304138394552@3c067526', core.servicesTable[i]
-        '98882935425939524a@3c067526', debug_functions.testFunc, 'Hello World! Hello World! Hello World!'
+        '98882935425939524a@3c067526', debug_functions.testFunc, 'Hello World!'
         # 'ms.jason.bakers25731', 'RLpk6jDCSrEt', '4Q3FI3OTH7VYVRJGFJFZZ4NJ6GZSDRFQ'
     )
 

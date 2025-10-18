@@ -37,16 +37,17 @@ class Log:
         self.info: tuple = info
         self._type = _type
         self._setDatetime = setDatetime
+        self.logTypes = logTypes
 
-        if self._type not in logTypes:
+        if self._type not in self.logTypes:
             self._type = 'info'
 
     def _getDatetime(self) -> str:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def __str__(self):
-        dateTimeSubsting: str = self._getDatetime() + ' ' if self._setDatetime else ''
-        return f'{dateTimeSubsting}  [{self._type}]  {" ".join(self.info)}'
+        dateTimeSubstring: str = self._getDatetime() + ' ' if self._setDatetime else ''
+        return f'{dateTimeSubstring}  [{self._type}{" " * (len(max(self.logTypes)) - len(self._type))}]  {" ".join(self.info)}'
 
 
 
@@ -168,8 +169,7 @@ class Logger(ILogger):
 def consoleHandler(log: Log):
     # if sys.stdout has not been replaces by custom stdout
     if hasattr(sys.stdout, 'isatty'): print(log)
-    else: print('Cannot use console handler with custom stdout! Use print func instead.')
-
+    else: print(log, end='')
 
 def setup_default_logger():
     Logger.addLogHandler(consoleHandler)
