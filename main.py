@@ -4,18 +4,16 @@ from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 
-from scripts.selling_services_scripts import followAccount
-
 load_dotenv()
 import os, sys
 
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization
+from scripts import debug_functions
 # need to create_all! delete after adding migrations
-from db.data import *
 from core.loader import Loader
-from core.middleware import adbScript
 from core.logger import Logger, setup_default_logger
+
+from scripts import debug_functions
+from scripts.login_script import loginScript
 
 
 
@@ -46,10 +44,6 @@ def startDatabaseAdminPanel():
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-@adbScript
-def testFunc(adbClient: AdbClient, adbAuto: AdbAutomatization, text: str) -> bool:
-    adbClient.fastText(text)
-    return True
 
 def main():
     clArgs = sys.argv[1:]
@@ -80,12 +74,12 @@ def main():
     core = loader.core
     core.start()
 
-    for serviceId in core.servicesTable:
-        core.addTaskToService(
-            #'9889ba304138394552@3c067526',
-            serviceId,
-            followAccount, 'https://www.instagram.com/psptm5/'
-        )
+    # for i in range(1):
+    core.addTaskToService(
+        #'9889ba304138394552@3c067526', core.servicesTable[i]
+        '98882935425939524a@3c067526', loginScript,
+        'ms.jason', 'RLpk6jDCSrEt', '4Q3FI3OTH7VYVRJGFJFZZ4NJ6GZSDRFQ'
+    )
 
     time.sleep(60)
     core.stop()

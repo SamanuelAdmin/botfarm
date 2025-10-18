@@ -11,6 +11,11 @@ from services.adb_manager.adb_auto import AdbAutomatization
 
 
 class IService(ABC):
+    """
+        isStarted - if iterator has been started
+        isWorking - if service is processing a script
+    """
+
     _id: str
     _taskQueue: TaskQueue
 
@@ -32,6 +37,10 @@ class IService(ABC):
     @property
     @abstractmethod
     def isWorking(self) -> bool: ...
+
+    @property
+    @abstractmethod
+    def isStarted(self) -> bool: ...
 
     @abstractmethod
     def loadTask(self, task: ITask) -> int: ...
@@ -127,6 +136,10 @@ class Service(IService):
         return self._isWorking
 
     @property
+    def isStarted(self) -> bool:
+        return self._isIteratorStarted
+
+    @property
     def isBlocked(self):
         return self._blocker
 
@@ -145,7 +158,8 @@ class Service(IService):
 
 
     def _iterator(self):
-        print('Iterator has been started.')
+        self._isIteratorStarted = True
+
         while True:
             # iterator killer
             if not self._isAlive: break
@@ -154,7 +168,6 @@ class Service(IService):
                 time.sleep(0.05)
                 continue
 
-            print('Got new task.')
             # getting new task
             task = self._taskQueue.get()
             self._currentTask = task
@@ -166,8 +179,11 @@ class Service(IService):
             self._isWorking = False
 
             if self._singleTaskMode:
-                # block after every task
+                # block after every task AND EXIT ITERATOR! 1 start = 1 task
                 self._blocker = True
+                break
+
+        self._isIteratorStarted = False
 
 
     def start(self) -> bool:
@@ -186,5 +202,6 @@ class Service(IService):
     def kill(self):
         self._isWorking = False
         self._blocker = True
+        self._isIteratorStarted = False
         self._taskQueue.makeEmpty()
         self._isAlive = False

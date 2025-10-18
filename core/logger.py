@@ -21,6 +21,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from functools import wraps
 from typing import Any, Generator, Callable, Optional, Iterable
+import sys
 
 from meta.queue import IQueue
 from meta.singleton import Singleton
@@ -165,7 +166,9 @@ class Logger(ILogger):
 
 # adding base handlers
 def consoleHandler(log: Log):
-    print(log)
+    # if sys.stdout has not been replaces by custom stdout
+    if hasattr(sys.stdout, 'isatty'): print(log)
+    else: print('Cannot use console handler with custom stdout! Use print func instead.')
 
 
 def setup_default_logger():

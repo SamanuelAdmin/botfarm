@@ -62,6 +62,13 @@ class AdbAutomatization(_AdbAutomatizationInterface):
         return self._adbClient.getScreenDump()
 
 
+    def log(self, *args) -> None:
+        # function to print all in one string. Useful with custom stdout solutions
+        print(
+            ' '.join( [ str(i) for i in args ] )
+        )
+
+
     def randomDelay(self, *args) ->  float:
         """
             Make delay by gotten args.

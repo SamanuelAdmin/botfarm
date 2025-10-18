@@ -1,8 +1,9 @@
 import os
+import sys
 import threading
 import uuid
 import time
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
 
@@ -11,10 +12,27 @@ from core.logger import Logger
 from core.service import IService
 from core.exceptions import *
 from meta.singleton import Singleton
-
+from meta.stdout import IStdout
 
 
 logger = Logger()
+
+class WorkerStdout(IStdout):
+    """
+        Catching all worker`s (script`s) logs from stdout
+        and process it with interrupt function.
+        Use only in child process, NOT IN MAIN!
+    """
+    def __init__(self, interrupt: Callable):
+        self._interrupt = interrupt
+        self._baseStdout = sys.stdout
+        sys.stdout = self
+
+    def write(self, *args: *tuple[str]) -> None:
+        self._interrupt(' '.join(args))
+
+    def flush(self) -> None:
+        self._baseStdout.flush()
 
 
 class Worker:
@@ -30,6 +48,7 @@ class Worker:
         self._iteratorDelay = iteratorDelay
         # worker ID
         self._id: str = str(uuid.uuid4())
+        self._customStdout: IStdout
 
         # pipe for sending logs to GSM logs handler
         self._logger: Connection
@@ -48,6 +67,7 @@ class Worker:
     def __del__(self):
         try: self._del()
         except: pass
+
 
     @property
     def id(self) -> str: return self._id
@@ -75,6 +95,15 @@ class Worker:
         try:
             self._logger.send( (_type, f'{self._loggerPrefix} {info}') )
         except (BrokenPipeError, OSError) as error: pass
+
+    def _sendCaughtLog(self, text: str) -> None:
+        """
+            Function for sending logs to logs pipe instead of
+            printing to console.
+            Instead of sendLog function, this one cannot
+            take any "type" attributes.
+        """
+        self._sendLog('info', text)
 
 
     def _del(self) -> None:
@@ -130,17 +159,18 @@ class Worker:
             if self._pipe.poll(timeout=self._iteratorDelay / 2):
                 call: tuple[str, tuple|list] = self._pipe.recv()
                 self._callProcessor(call[0], *call[1])
-        except (BrokenPipeError, OSError): self._del()
+        except (BrokenPipeError, OSError, EOFError): self._del()
 
 
     def _sendToPipe(self, data: Any) -> None:
         try: self._pipe.send(data)
-        except (BrokenPipeError, OSError): self._del()
+        except (BrokenPipeError, OSError, EOFError): self._del()
 
 
     def _killService(self, service: IService) -> None:
         service.kill()
         del self._services[service.id]
+        self._sendLog('info', f'Service {service.id} killed.')
 
     def _addService(self, service: IService) -> None:
         self._services[service.id] = service
@@ -150,6 +180,11 @@ class Worker:
         if not self._pipe:
             self._sendLog('error', 'Cannot start workers iterator without pipe.')
             raise UnableToDo('Cannot start workers iterator without pipe.')
+
+        # inner functions which needed only in iterator
+        def checkIfServiceStarted(service: IService) -> bool:
+            return any([service.isStarted, service.isWorking])
+
 
         self._sendLog('debug', 'Worker (iterator) started.')
         while self._isAlive:
@@ -162,17 +197,17 @@ class Worker:
             for serviceId in list(self._services.keys()):
                 service = self._services[serviceId]
 
-                # do not touch already started services
-                if service.isWorking: continue
-
-                # delete if service has no tasks and not working
-                if service.loadedTasksCount == 0:
-                    self._killService(service)
 
                 # starting if it has task(s) and not already started
-                # service.start starts new thread, works fine with IO bound tasks
-                service.start()
-                self._sendLog('debug', f'Process new service - {serviceId}.')
+                if not checkIfServiceStarted(service):
+                    if service.loadedTasksCount == 0:
+                        # delete if service has no tasks and not working
+                        self._killService(service)
+                    else:
+                        # service.start starts new thread, works fine with IO bound tasks
+                        service.start()
+                        self._sendLog('debug', f'Process new service - {serviceId}.')
+                        continue
 
 
     def start(self, workerPipe: Connection, logger: Connection) -> None:
@@ -184,6 +219,10 @@ class Worker:
         # its new process, isolated, because iterator blocks the process/thread
         self._pipe = workerPipe
         self._isAlive = True
+
+        # creating custom stdout for new started worker
+        self._customStdout = WorkerStdout(self._sendCaughtLog)
+
         self._iterator()
 
 
@@ -249,7 +288,7 @@ class GlobalServiceManager:
             if fb:
                 logger.debug(f'Successfully worker call. ID: {_id}, Call: {call}, Args count: {len(args)}.')
                 return fb, data
-        except (BrokenPipeError, OSError, ValueError): pass
+        except (BrokenPipeError, OSError, EOFError, ValueError): pass
 
         return None
 
@@ -275,7 +314,7 @@ class GlobalServiceManager:
                         loggingFunc = getattr(logger, log[0], logger.debug)
                         loggingFunc( log[1] )
 
-                except (BrokenPipeError, OSError):
+                except (BrokenPipeError, OSError, EOFError):
                     logger.debug(f'Logs connection with {workerId} closed. Removing from the table.')
                     del self._workersLogsConnections[workerId]
 
@@ -366,11 +405,12 @@ class GlobalServiceManager:
             workerProcess.start()
             logger.debug(f'Starting worker {worker.id}...')
 
-        logger.debug(f'Starting logs handler.')
-        threading.Thread(target=self._logsHandler).start()
-
         logger.info('Global service manager started.')
         self._isLoaded = True
+
+        # post loading
+        logger.debug(f'Starting logs handler.')
+        threading.Thread(target=self._logsHandler).start()
 
 
     def kill(self) -> bool:

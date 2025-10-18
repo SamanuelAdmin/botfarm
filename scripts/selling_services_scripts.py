@@ -1,13 +1,13 @@
 from datetime import datetime
 
+from core.logger import Logger
 from core.middleware import adbScript
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization, PostActions
 
 
-def simpleLog(adb: AdbClient, *logs):
-    currentTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f'[{currentTime}] {adb.serial} - ', *logs)
+logger = Logger()
+
 
 
 def openViaLink(adb: AdbClient, link: str) -> bool:
@@ -35,8 +35,9 @@ def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -
         )
 
         if alertDialogSoup['text'] == "Your request is pending":
-            simpleLog(
-                adb, 'ALERT! Account cannot follow other accounts!',
+            logger.error(
+                adb.serial,
+                'ALERT! Account cannot follow other accounts!',
                 f'Alert dialog: {alertDialogSoup}',
                 f'Clients account: {link}',
                 'Returning...'
@@ -48,14 +49,14 @@ def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -
             postActions=(PostActions.clickOnElement,)
         )
 
-        simpleLog(adb, f'Activate [', promoDialogSoup['text'], ']')
+        logger.info(adb.serial, f'Activate [', promoDialogSoup['text'], ']')
 
     return True
 
 
 @adbScript
 def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
-    simpleLog(adb, f'Opening post via link {link}')
+    logger.info(adb.serial, f'Opening post via link {link}')
     openViaLink(adb, link)
 
 
@@ -64,7 +65,7 @@ def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
         postActions=( PostActions.clickOnElement, )
     )
 
-    simpleLog(adb, 'Loaded. Leaved like, returning...')
+    logger.info(adb.serial, 'Loaded. Leaved like, returning...')
 
     adbAuto.waitForElement(
         {'resource-id': 'com.instagram.android:id/action_bar_button_back'},
@@ -76,7 +77,7 @@ def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
 
 @adbScript
 def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
-    simpleLog(adb, f'Opening profile via link {link}')
+    logger.info(adb.serial, f'Opening profile via link {link}')
     openViaLink(adb, link)
 
     adbAuto.waitForElement(
@@ -91,7 +92,7 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
     )
 
     if followButtonSoup.node['text'] != 'Follow':
-        simpleLog(adb, 'Account is already following.')
+        logger.warning(adb.serial, 'Account is already following.')
 
         adbAuto.waitForElement(
             {'content-desc': "Back"},
@@ -100,13 +101,13 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
         return False
 
 
-    simpleLog(adb, 'Loaded. Leaving follower...')
+    logger.info(adb.serial, 'Loaded. Leaving follower...')
     adbAuto.waitForElement(
         {'resource-id': 'com.instagram.android:id/profile_header_user_action_follow_button'},
         postActions=( PostActions.clickOnElement, )
     )
 
-    simpleLog(adb, 'Done. Returning...')
+    logger.info(adb.serial, 'Done. Returning...')
     adbAuto.randomDelay(2, 3)
     status = checkForAlertDialog(adb, adbAuto, link)
 
@@ -115,13 +116,13 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
         postActions=(PostActions.clickOnElement,)
     )
 
-    simpleLog(adb, 'Done.')
+    logger.info(adb.serial, 'Done.')
 
     # checking again
     if status:
         adbAuto.randomDelay(2, 3)
         status = checkForAlertDialog(adb, adbAuto, link)
 
-    return True
+    return status
 
 
