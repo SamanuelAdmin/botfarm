@@ -41,7 +41,8 @@ class AdbClient:
             )
         )
 
-    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK: float=0.02, swipeTime: Optional[float]=None) -> bool:
+    def swipe(self, dotStart: Dot, dotFinish: Dot, timeK: float=0.02, swipeTime: Optional[int]=None) -> bool:
+        # swipe time in seconds (CANNOT BE FLOAT (IDK WHY))
         swipeTime = swipeTime * 1000 if swipeTime else int((dotFinish - dotStart) * timeK)
         return bool(
             self.sendAdbCommand(

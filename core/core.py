@@ -209,7 +209,14 @@ class Core(ICore):
         # check if service`s id is correct
         addingResult = bool(service.loadTask(task)) # now we have loaded service
         logger.info(f'Adding new task to service {service}. Success - {addingResult}.')
-
-        # adding to the GSM to process task
-        self._GSM.add(service)
         return addingResult
+
+
+    @syscall
+    def processService(self, service: IService|str) -> bool:
+        """
+            Push loaded service to GSM. Service must have one or more tasks!
+        """
+
+        self._GSM.add(service)
+        return True

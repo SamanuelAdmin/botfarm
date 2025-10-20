@@ -211,7 +211,7 @@ class Worker:
                     else:
                         # service.start starts new thread, works fine with IO bound tasks
                         service.start()
-                        self._sendLog('debug', f'Process new service - {serviceId}.')
+                        self._sendLog('debug', f'Process new task from service {serviceId}.')
                         continue
 
 

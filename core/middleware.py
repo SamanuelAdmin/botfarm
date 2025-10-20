@@ -37,7 +37,7 @@ def syscall(function: Callable) -> Callable:
         service = core._services.get(serviceId)
         if not service: raise NotFoundException(f'Service {serviceId} not found.')
 
-        return function(core,  service, *args, **kwargs)
+        return function(core, service, *args, **kwargs)
 
     return wrapper
 

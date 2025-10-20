@@ -62,13 +62,6 @@ class AdbAutomatization(_AdbAutomatizationInterface):
         return self._adbClient.getScreenDump()
 
 
-    def log(self, *args) -> None:
-        # function to print all in one string. Useful with custom stdout solutions
-        print(
-            ' '.join( [ str(i) for i in args ] )
-        )
-
-
     def randomDelay(self, *args) ->  float:
         """
             Make delay by gotten args.
@@ -137,7 +130,7 @@ class AdbAutomatization(_AdbAutomatizationInterface):
             Take sector by its top and bottom positions.
             dotTop - top, left position
             dotBottom - bottom, right position
-            clickDuration - duration of the click. If none - ordinary click.
+            clickDuration - duration of the click. If none - ordinary click. IN SECONDS
             Other args will be ignored (to use it with other func just by *).
         """
 
@@ -152,13 +145,14 @@ class AdbAutomatization(_AdbAutomatizationInterface):
             if clickDuration else self._adbClient.tap(clickDot)
 
 
-    def swipeInRect(self, dotTop: Dot, dotBottom: Dot, *_, swipeDuration: int=200) -> bool:
+    def swipeInRect(self, dotTop: Dot, dotBottom: Dot, *_, swipeDuration: int=1, direction: bool=True) -> bool:
         """
             Swipe by random vector in rectangle sector.
             Take sector by its top and bottom positions.
             dotTop - top, left position
             dotBottom - bottom, right position
-            swipeDuration - duration of the swipe (time in ms, 1000 ms = 1 sec)
+            swipeDuration - duration of the swipe (time in seconds, 1000 ms = 1 sec)
+            direction - the direction of the swipe. If direction is True - swipe to top. Else - swipe to bottom.
             Other args will be ignored (to use it with other func just by *).
         """
 
@@ -171,6 +165,8 @@ class AdbAutomatization(_AdbAutomatizationInterface):
 
         # create dots and swipe by themes
         dot1, dot2 = Dot(rand1, y1).make_random(), Dot(rand2, y2).make_random()
+        if not direction: dot1, dot2 = dot2, dot1
+
         return self._adbClient.swipe(dot1, dot2, swipeTime=swipeDuration)
 
 

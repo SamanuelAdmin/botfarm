@@ -42,6 +42,9 @@ class Log:
         if self._type not in self.logTypes:
             self._type = 'info'
 
+    @property
+    def log_type(self) -> str: return self._type
+
     def _getDatetime(self) -> str:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -84,6 +87,7 @@ class ILogger(ABC):
     """
     _loggerQueue: IQueue
     _lock: threading.Lock # threads safety mechanic
+    debugMode: bool
 
     @abstractmethod
     def info(self, info: str): pass
@@ -105,6 +109,7 @@ class Logger(ILogger):
     __metaclass__ = Singleton
     _logsHandlers: list[LOG_HANDLER_CONTRACT] = []
     _lock: threading.Lock
+    debugMode: bool
 
     def __init__(
             self, setDatetime: bool=True,
@@ -120,8 +125,12 @@ class Logger(ILogger):
         for logHandler in logHandlers:
             cls._logsHandlers.append(logHandler)
 
+    @classmethod
+    def setDebug(cls, level: bool):
+        cls.debugMode = level
 
-    def logsConverter(function: Callable[[ILogger, *tuple[Any]], None]) -> Callable:
+
+    def logsConverter(function: Callable[[ILogger, *tuple[Any]], Log]) -> Callable:
         """
             Behavior of all log methods.
             Just change this part if you need to change logger logic.
@@ -130,7 +139,11 @@ class Logger(ILogger):
         @wraps(function)
         def wrapper(logger: ILogger, *args: tuple[Any]):
             convertedArgs: str = ' '.join( [ str(obj) for obj in args ] )
-            log = function(logger, convertedArgs)
+            log: Log = function(logger, convertedArgs)
+
+            if log.log_type == 'debug' and not logger.debugMode:
+                # processing debug logs in non debug mode
+                return
 
             with logger._lock:
                 logger._loggerQueue.add(log)
@@ -143,23 +156,23 @@ class Logger(ILogger):
 
 
     @logsConverter
-    def info(self, info: str):
+    def info(self, info: str) -> Log:
         return Log( 'info', info, setDatetime=self._setDatetime )
 
     @logsConverter
-    def debug(self, info: str):
+    def debug(self, info: str) -> Log:
         return Log( 'debug', info, setDatetime=self._setDatetime )
 
     @logsConverter
-    def warning(self, info: str):
+    def warning(self, info: str) -> Log:
         return Log( 'warning', info, setDatetime=self._setDatetime )
 
     @logsConverter
-    def error(self, info: str):
+    def error(self, info: str) -> Log:
         return Log( 'error', info, setDatetime=True )
 
     @logsConverter
-    def critical(self, info: str):
+    def critical(self, info: str) -> Log:
         return Log( 'critical', info, setDatetime=True )
 
 
@@ -171,5 +184,6 @@ def consoleHandler(log: Log):
     if hasattr(sys.stdout, 'isatty'): print(log)
     else: print(log, end='')
 
-def setup_default_logger():
+def setup_default_logger(debug=False):
+    Logger.setDebug(debug)
     Logger.addLogHandler(consoleHandler)
