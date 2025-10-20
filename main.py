@@ -14,6 +14,7 @@ from core.logger import Logger, setup_default_logger
 
 from scripts import debug_functions
 from scripts.login_script import loginScript
+from scripts.selling_services_scripts import *
 
 
 # some temp configs
@@ -220,9 +221,12 @@ def main():
     #     core.processService(serviceId)
 
     # core.addTaskToService(
-    #     '9887e83151554b3656@3c067526', loginScript, *('msthomas.allena79888', '7Sotbolm3uGFNU', 'BFIL72WXXFWIQIHL3VYR23C2HYQPAX6C'),
+    #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
-    # core.processService('9887e83151554b3656@3c067526')
+    core.addTaskToService(
+        '988e9034574a4d5831@3c067526', commentPost, 'https://www.instagram.com/p/DN5LWYJjNhq/', 'Guess what? Coconut!',
+    )
+    core.processService('988e9034574a4d5831@3c067526')
 
     # time.sleep(60)
     # core.stop()

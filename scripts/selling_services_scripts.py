@@ -6,11 +6,11 @@ from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization, PostActions
 
 
-logger = Logger()
+logger = Logger(setDatetime=False)
 
 
-
-def openViaLink(adb: AdbClient, link: str) -> bool:
+@adbScript
+def openViaLink(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     return bool(adb.sendAdbCommand(
         f'am start -a android.intent.action.VIEW -d {link} com.instagram.android'
     ))
@@ -19,13 +19,10 @@ def openViaLink(adb: AdbClient, link: str) -> bool:
 @adbScript
 def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     # TRUE - EVERYTHING OK, FALSE - NOT OKAY
+    returnStatus = True
+
     alertDialogSoup = adbAuto.getDumpElement(
-        adbAuto.screenDump,
-        {'resource-id': 'com.instagram.android:id/igds_alert_dialog_headline'}
-    )
-    promoDialogSoup = adbAuto.getDumpElement(
-        adbAuto.screenDump,
-        {'resource-id': 'com.instagram.android:id/igds_headline_headline'}
+        adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/igds_alert_dialog_headline'}
     )
 
     if alertDialogSoup:
@@ -41,9 +38,14 @@ def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -
                 f'Alert dialog: {alertDialogSoup}',
                 f'Clients account: {link}',
                 'Returning...'
-            ); return False
+            )
+            returnStatus = False
 
-    elif promoDialogSoup:
+    promoDialogSoup = adbAuto.getDumpElement(
+        adbAuto.screenDump,{'resource-id': 'com.instagram.android:id/igds_headline_headline'}
+    )
+
+    if promoDialogSoup:
         adbAuto.waitForElement(
             {'resource-id': 'com.instagram.android:id/igds_promo_dialog_action_button'},
             postActions=(PostActions.clickOnElement,)
@@ -51,12 +53,12 @@ def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -
 
         logger.info(adb.serial, f'Activate [', promoDialogSoup['text'], ']')
 
-    return True
+    return returnStatus
 
 
 @adbScript
 def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
-    logger.info(adb.serial, f'Opening post via link {link}')
+    logger.debug(adb.serial, f'Opening post via link {link}')
     openViaLink(adb, link)
 
 
@@ -77,7 +79,7 @@ def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
 
 @adbScript
 def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
-    logger.info(adb.serial, f'Opening profile via link {link}')
+    logger.debug(adb.serial, f'Opening profile via link {link}')
     openViaLink(adb, link)
 
     adbAuto.waitForElement(
@@ -90,8 +92,9 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
         adbAuto.screenDump,
         {'resource-id': 'com.instagram.android:id/profile_header_follow_button'}
     )
+    logger.debug(adb.serial, followButtonSoup)
 
-    if followButtonSoup.node['text'] != 'Follow':
+    if followButtonSoup['text'] != 'Follow':
         logger.warning(adb.serial, 'Account is already following.')
 
         adbAuto.waitForElement(
@@ -126,3 +129,42 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
     return status
 
 
+
+@adbScript
+def commentPost(adb: AdbClient, adbAuto: AdbAutomatization, link: str, comment: str) -> bool:
+    logger.debug(adb.serial, f'Opening profile via link {link}')
+    openViaLink(adb, adbAuto, link)
+
+    adbAuto.waitForElement(
+        {'resource-id': 'com.instagram.android:id/row_feed_button_comment'},
+        postActions=( PostActions.clickOnElement, )
+    )
+
+    logger.debug(adb.serial, 'Loaded. Leaving comment...')
+    adbAuto.waitForElement(
+        {'resource-id': 'com.instagram.android:id/layout_comment_thread_edittext'},
+        postActions=( PostActions.clickOnElement, )
+    )
+    adb.fastText(comment)
+
+    adbAuto.waitForElement(
+        {'resource-id': 'com.instagram.android:id/layout_comment_thread_post_button_icon'},
+        postActions=( PostActions.clickOnElement, )
+    )
+
+    adbAuto.swipeInRect(
+        *adbAuto.getElementBounds(
+            adbAuto.getDumpElement(
+                adbAuto.screenDump, {'class': "androidx.recyclerview.widget.RecyclerView"}
+            )
+        )
+    )
+
+    logger.debug(adb.serial, 'Comment leaved. Returning...')
+
+    adbAuto.waitForElement(
+        {'content-desc': "Back"},
+        postActions=(PostActions.clickOnElement,)
+    )
+
+    return True
