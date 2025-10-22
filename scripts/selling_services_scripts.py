@@ -145,7 +145,9 @@ def commentPost(adb: AdbClient, adbAuto: AdbAutomatization, link: str, comment: 
         {'resource-id': 'com.instagram.android:id/layout_comment_thread_edittext'},
         postActions=( PostActions.clickOnElement, )
     )
-    adb.fastText(comment)
+    # adb.fastText(comment)
+    adb.bufferProcessor.copy(comment)
+    adb.bufferProcessor.paste()
 
     adbAuto.waitForElement(
         {'resource-id': 'com.instagram.android:id/layout_comment_thread_post_button_icon'},

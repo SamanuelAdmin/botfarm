@@ -153,7 +153,8 @@ def setNewBio(adb: AdbClient, adbAuto: AdbAutomatization, bio: str= "") -> bool:
         adb.deleteText(length=len(oldBio))
 
     logger.debug(adb.serial, 'Inputting new bio...')
-    adb.fastText(bio)
+    adb.bufferProcessor.copy(bio)
+    adb.bufferProcessor.paste()
 
     logger.debug(adb.serial, 'Done, saving new bio...')
     adbAuto.waitForElement(
