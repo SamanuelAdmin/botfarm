@@ -156,6 +156,22 @@ def checkOnAnotherDevicePage(adb: AdbClient, adbAuto: AdbAutomatization, *args) 
 
     return fa2Page(adb, adbAuto, *args)
 
+@adbScript
+def allowCookies(adb: AdbClient, adbAuto: AdbAutomatization, *args) -> bool:
+    logger.info(adb.serial, 'Allowing cookies.')
+    return waitAndClick(adbAuto, {'content-desc': 'Allow all cookies'})
+
+@adbScript
+def configuringAds(adb: AdbClient, adbAuto: AdbAutomatization, *args) -> bool:
+    logger.info(adb.serial, 'Configuring ads.')
+    waitAndClick(adbAuto, {'class': "android.widget.Button"})
+    waitAndClick(adbAuto, {'content-desc': "Use free of charge with ads"})
+    waitAndClick(adbAuto, {'content-desc': "Continue"})
+    waitAndClick(adbAuto, {'text': "Agree"})
+    waitAndClick(adbAuto, {'content-desc': "Close"})
+    return True
+
+
 
 # patterns for each element. required in modules architecture
 # element_name : element_attrs
@@ -172,7 +188,9 @@ patterns: dict[str, dict[str, str]] = {
     'relevantAdsPage': {'text': "Want us to show you ads that are more relevant by using your activity from ad partners?"},
     'useAnotherProfile': {'content-desc': 'Use another profile'},
     'removedContentPage': {'text': "What happened"},
-    'checkOnAnotherDevice': {'text': "Check your notifications on another device"}
+    'checkOnAnotherDevice': {'text': "Check your notifications on another device"},
+    'allowCookiesPage': {'content-desc': "Allow the use of cookies by Instagram?"},
+    'configuringAdsPage': {'content-desc': "Choose if we process your data for ads"}
 }
 
 # table with all tasks, structure:
@@ -190,6 +208,8 @@ taskTable: dict[tuple[str], ADB_SCRIPT_CONTRACT] = {
     ('useAnotherProfile',): useAnotherProfile,
     ('removedContentPage',): closeRemovedContentPage,
     ('checkOnAnotherDevice',): checkOnAnotherDevicePage,
+    ('allowCookiesPage',): allowCookies,
+    ('configuringAdsPage',): configuringAds
 }
 
 

@@ -6,7 +6,6 @@ import json
 from collections.abc import Callable
 from functools import wraps
 from typing import Optional, Any
-from abc import ABC, abstractmethod
 
 from core.logger import Logger
 from .api_connector import ApiConnector
@@ -29,7 +28,18 @@ class AdbClient:
         self.connector = connector
         self.deviceLink = deviceLinkPattern.format(serial)
         # phone`s clipboard API, can be used from "outside"
-        self.bufferProcessor = self.BufferProcessor(self)
+        self._bufferProcessor = None
+
+
+    @property
+    def bufferProcessor(self):
+        """ Added because buffer is an option. Also, it needs time to make a request when initing """
+
+        if self._bufferProcessor is None:
+            logger.info(self.serial, 'Initializing buffer processor...')
+            self._bufferProcessor = self.BufferProcessor(self)
+
+        return self._bufferProcessor
 
 
     class BufferProcessor:
@@ -49,7 +59,8 @@ class AdbClient:
                 logger.error(f'{self._adbClient.serial} Cannot start clipboard service (clipper).')
                 self._clipperStatus = False
 
-        def clipperRequired(self, function: Callable):
+
+        def clipperRequired(function: Callable):
             """
                 Checks if clipped has been installed and started.
                 Raises Exception if not.
@@ -64,6 +75,7 @@ class AdbClient:
 
                 return function(bufferProcessor, *args, **kwargs)
             return wrapper
+
 
         @clipperRequired
         def copy(self, text: str) -> bool:
