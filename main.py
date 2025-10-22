@@ -15,6 +15,7 @@ from core.logger import Logger, setup_default_logger
 from scripts import debug_functions
 from scripts.login_script import loginScript
 from scripts.selling_services_scripts import *
+from scripts.edit_profile_info import editProfileInfoScript
 
 
 # some temp configs
@@ -224,9 +225,9 @@ def main():
     #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
     core.addTaskToService(
-        '988e9034574a4d5831@3c067526', commentPost, 'https://www.instagram.com/p/DN5LWYJjNhq/', 'Guess what? Coconut!',
+        '9887bc465846444f4d@3c067526', editProfileInfoScript, bio="Sportiva per passione ⚽⚽ e molto più forte della mia intelligenza! 😄 #sportlover #fitnessaspirant"
     )
-    core.processService('988e9034574a4d5831@3c067526')
+    core.processService('9887bc465846444f4d@3c067526')
 
     # time.sleep(60)
     # core.stop()
