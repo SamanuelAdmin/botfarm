@@ -50,6 +50,7 @@ def editProfileImage(adb: AdbClient, adbAuto: AdbAutomatization, pathToImage: st
 
         time.sleep(5)
         return True
+
     except Exception as e:
         logger.error(str(e))
         return False

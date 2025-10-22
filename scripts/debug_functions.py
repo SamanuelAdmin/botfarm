@@ -31,3 +31,11 @@ def testSwipe(adbClient: AdbClient, adbAuto: AdbAutomatization) -> bool:
     adbAuto.swipeInRect(
         Dot(300, 500), Dot(600, 1000), direction=False
     )
+
+
+@adbScript
+def testEmojisInput(adbClient: AdbClient, adbAuto: AdbAutomatization, text) -> bool:
+    adbClient.sendAdbCommand(f'am broadcast -a clipper.set -e text "{text}"')
+    adbClient.sendAdbCommand('input keyevent 279')
+    logger.debug(adbClient.serial, f'Done.')
+    return True

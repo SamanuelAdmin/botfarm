@@ -32,3 +32,4 @@ class FileDownloadException(Exception):
 
     def __str__(self):
         return f'Error downloading file: {self.filePath}'
+
