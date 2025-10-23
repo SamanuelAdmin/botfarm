@@ -1,6 +1,3 @@
-
-
-
 import datetime
 from services.db_services.order_manager import OrderManager
 from services.panel_manager.api_service import PanelApiService
