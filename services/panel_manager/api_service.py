@@ -4,6 +4,8 @@ import json
 from services.panel_manager.exceptions import PanelApiServiceError, UnknownMethodError
 from services.panel_manager.enums import PanelApiMethods
 
+from typing import Any
+
 
 class PanelApiService:
     def __init__(self, apiKey: str) -> None:
@@ -16,12 +18,14 @@ class PanelApiService:
         except json.JSONDecodeError as e:
             raise PanelApiServiceError(f"Не удалось получить json из ответа. {e}")
 
-    def _requestApi(self, method: PanelApiMethods, endpoint: str) -> requests.Response:
+    def _requestApi(
+            self, method: PanelApiMethods, endpoint: str, queryParams: dict[str, Any]|None=None
+    ) -> requests.Response:
         try:
             if method == PanelApiMethods.GET:
-                res = requests.get(self._apiBaseUrl + endpoint)
+                res = requests.get(self._apiBaseUrl + endpoint, params=queryParams)
             elif method == PanelApiMethods.POST:
-                res = requests.post(self._apiBaseUrl + endpoint)
+                res = requests.post(self._apiBaseUrl + endpoint, params=queryParams)
             else: res = None
         except Exception as e:
             raise PanelApiServiceError(f'Unknown error: {e}')
@@ -36,6 +40,24 @@ class PanelApiService:
 
     def getOrdersJson(self) -> dict:
         res = self._requestApi(PanelApiMethods.GET, '')
+        return self._getJson(res)
+
+    def getOrdersJsonCreatedFrom(self, createdFrom: float) -> dict:
+        """
+            Order creation UNIX timestamp (lower bound).
+        """
+        res = self._requestApi(
+            PanelApiMethods.GET, '', {'created_from': createdFrom}
+        )
+        return self._getJson(res)
+
+    def getSortedOrders(self) -> dict:
+        """
+            Gets sorted list by date-desc
+        """
+        res = self._requestApi(
+            PanelApiMethods.GET, '', {'sort': 'date-desc'}
+        )
         return self._getJson(res)
     
 

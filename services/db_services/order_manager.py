@@ -37,6 +37,7 @@ class OrderManager:
 
     def getLastOrder(self) -> Order|None:
         """Get last added order"""
+        #TODO:May be need sort by date after get? 
         return self.repository.getLastOrder()
 
     def delete(self, id: int) -> None:
