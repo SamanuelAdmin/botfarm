@@ -5,7 +5,7 @@ from repository.repository import Repository
 from exceptions import OrderAlreadyExists
 
 
-class AccountsManager:
+class OrderManager:
     """
         Working with the order table
     """
