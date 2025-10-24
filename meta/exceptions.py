@@ -23,3 +23,5 @@ class IncorrectDataFormatException(Exception): pass
 
 class AdbHubNotFound(Exception): pass
 class AdbHubAlreadyExists(Exception): pass
+
+class OrderAlreadyExists(Exception): pass

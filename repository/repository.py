@@ -3,6 +3,7 @@ from typing import Any, Type
 from db.data.base import Base
 
 from db.controller import DatabaseController
+from db.data.order import Order
 from meta.crud import CRUD
 from meta.singleton import Singleton
 
@@ -57,3 +58,8 @@ class Repository(CRUD):
     def findAllBy(self, model: Type[Base], **kwargs) -> Any:
         return self.controller.session.query(model) \
                 .filter_by(**kwargs).all()
+
+    def getLast(self, model: Type[Base], *sortByArgs) -> Any:
+        return self.controller.session.query(
+            model
+        ).order_by(*sortByArgs).first()
