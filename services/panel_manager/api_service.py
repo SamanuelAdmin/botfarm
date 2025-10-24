@@ -9,8 +9,10 @@ from typing import Any
 
 class PanelApiService:
     def __init__(self, apiKey: str) -> None:
-        self._apiKey = apiKey
-        self._apiBaseUrl = 'https://thepanel.top/admin/adminapi/v2/paths/orders/'
+        self._headers = {
+            'X-Api-Key': apiKey
+        }
+        self._apiBaseUrl = 'https://thepanel.top/adminapi/v2/orders/'
 
     def _getJson(self, response: requests.Response) -> dict:
         try:
@@ -23,9 +25,13 @@ class PanelApiService:
     ) -> requests.Response:
         try:
             if method == PanelApiMethods.GET:
-                res = requests.get(self._apiBaseUrl + endpoint, params=queryParams)
+                res = requests.get(
+                    self._apiBaseUrl + endpoint, params=queryParams, headers=self._headers
+                )
             elif method == PanelApiMethods.POST:
-                res = requests.post(self._apiBaseUrl + endpoint, params=queryParams)
+                res = requests.post(
+                    self._apiBaseUrl + endpoint, params=queryParams, headers=self._headers
+                )
             else: res = None
         except Exception as e:
             raise PanelApiServiceError(f'Unknown error: {e}')
@@ -34,7 +40,7 @@ class PanelApiService:
             raise UnknownMethodError(f'Method {method} is unknown!')
 
         if res.status_code != 200:
-            raise PanelApiServiceError(f'The status code is {res.status_code}')
+            raise PanelApiServiceError(f'The status code is {res.status_code}. {res.text}')
 
         return res
 
