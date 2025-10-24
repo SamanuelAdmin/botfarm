@@ -59,7 +59,7 @@ class Repository(CRUD):
         return self.controller.session.query(model) \
                 .filter_by(**kwargs).all()
 
-    def getLastOrder(self) -> Order | None:
+    def getLast(self, model: Type[Base], *sortByArgs) -> Any:
         return self.controller.session.query(
-            Order
-        ).order_by(Order.id, Order.created_date).first()
+            model
+        ).order_by(*sortByArgs).first()
