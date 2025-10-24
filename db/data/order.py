@@ -15,6 +15,3 @@ class Order(Base):
     service_id: Mapped[int]
     service_type: Mapped[str]
     price: Mapped[float]
-
-    is_new: Mapped[bool] = mapped_column(default=True)
-

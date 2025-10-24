@@ -1,7 +1,9 @@
 from db.data.order import Order
 
+from meta.schemas import OrderModel
 from repository.repository import Repository
 
+from meta.exceptions import OrderAlreadyExists
 from exceptions import OrderAlreadyExists
 
 
@@ -18,6 +20,8 @@ class OrderManager:
             self.repository.read(Order, id)
         )
 
+    def add(self, order: OrderModel) -> None: 
+        if self.exists(order.id):
     def add(
         self,
         id: int, externel_id: int, link: str,
@@ -29,6 +33,7 @@ class OrderManager:
 
         self.repository.create(
             Order(
+                **order.model_dump()
                 id, externel_id,
                 link, quantity,
                 service_id, service_type, price
@@ -43,5 +48,15 @@ class OrderManager:
     def delete(self, id: int) -> None:
         self.repository.delete(Order, id)
          
+
+
+
+
+
+
+
+
+
+
 
 
