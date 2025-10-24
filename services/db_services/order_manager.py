@@ -4,7 +4,6 @@ from meta.schemas import OrderModel
 from repository.repository import Repository
 
 from meta.exceptions import OrderAlreadyExists
-from exceptions import OrderAlreadyExists
 
 
 class OrderManager:
@@ -22,41 +21,21 @@ class OrderManager:
 
     def add(self, order: OrderModel) -> None: 
         if self.exists(order.id):
-    def add(
-        self,
-        id: int, externel_id: int, link: str,
-        quantity: int, service_id: int,
-        service_type: str, price: int
-    ) -> None: 
-        if self.exists(id):
             raise OrderAlreadyExists("This order already exists")
 
         self.repository.create(
             Order(
                 **order.model_dump()
-                id, externel_id,
-                link, quantity,
-                service_id, service_type, price
             )
         )
 
     def getLastOrder(self) -> Order|None:
         """Get last added order"""
         #TODO:May be need sort by date after get? 
-        return self.repository.getLastOrder()
+        return self.repository.getLast(Order, Order.created_date.desc())
 
     def delete(self, id: int) -> None:
         self.repository.delete(Order, id)
          
-
-
-
-
-
-
-
-
-
-
 
 
