@@ -1,10 +1,20 @@
 from meta.exceptions import OrderAlreadyExists
 from meta.schemas import OrderModel
-import datetime
 from services.db_services.order_manager import OrderManager
 from services.panel_manager.api_service import PanelApiService
 from services.panel_manager.models import OrderData
 from services.panel_manager.parser_service import PanelParserService
+
+from dataclasses import asdict
+
+import time
+
+
+class PanelManagerError(Exception):
+    """Some exception in PanelManager"""
+
+class NoLastOrder(PanelManagerError):
+    """No last order for parse new orders"""
 
 
 class PanelManager():
@@ -39,9 +49,21 @@ class PanelManager():
             Gets orders starting from the last one
         """
         last_order = self._orderManager.getLastOrder()
-        created_timestamp = last_order.created_date.timestamp()
+        if not last_order:
+            raise NoLastOrder
+        print(last_order.created_date)
 
         #WARN: This part can go to new parser service
+        apiJson = self._apiService.getOrdersJsonCreatedFrom(last_order.created_timestamp)
+        parsed = self._parserService.parseOrdersJson(apiJson)
+        if len(parsed) == 1: return []
+        return parsed[1:]
+    
+    def start(self) -> None:
+        while True:
+            new = self.getNewOrders()
+            for order in new:
+                try:
                     self._orderManager.add(
                         OrderModel(
                             id=order.id,
@@ -54,8 +76,11 @@ class PanelManager():
                             price=order.price,
                         )
                     )
-        apiJson = self._apiService.getOrdersJsonCreatedFrom(created_timestamp)
-        return self._parserService.parseOrdersJson(apiJson)
+                    print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
+                except OrderAlreadyExists: continue
+
+            time.sleep(15)
+
 
 
         
