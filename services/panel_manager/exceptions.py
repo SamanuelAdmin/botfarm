@@ -9,3 +9,10 @@ class PanelApiServiceError(Exception):
 
 class UnknownMethodError(PanelApiServiceError):
     """Set method is unknown"""
+
+
+class PanelManagerError(Exception):
+    """Some exception in PanelManager"""
+
+class NoLastOrder(PanelManagerError):
+    """No last order for parse new orders"""

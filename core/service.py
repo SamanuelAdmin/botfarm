@@ -205,3 +205,6 @@ class Service(IService):
         self._isIteratorStarted = False
         self._taskQueue.makeEmpty()
         self._isAlive = False
+
+        if self._currentTask:
+            self._currentTask.stop()

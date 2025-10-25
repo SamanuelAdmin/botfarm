@@ -139,7 +139,14 @@ class Worker:
             .name.startswith(self.workerPrefix): os._exit(0)
 
 
-    def _callProcessor(self, name: str, *args):
+    def _callProcessor(self, name: str, *args) -> None:
+        """
+            Results:
+                ['done', []] - successful command
+                ['name', [data]] - successful sent data (reply for the command)
+                ['error', ['... description...']] - error message
+        """
+
         self._sendLog('debug', f'System call {name}. Arguments count: {len(args)}')
         match name:
             case 'stop': self._del()
@@ -152,8 +159,20 @@ class Worker:
                         self._addService(service)
 
                 self._sendToPipe(('done', []))
+
+            case 'remove':
+                processServices = list(self._services.keys())
+                serviceId = args[0]
+                if not isinstance(serviceId, str) or serviceId not in processServices:
+                    return self._sendToPipe(('error', ['Cannot remove service ', serviceId]))
+
+                self._killService(self._services[serviceId])
+                self._sendToPipe(('done', []))
+
             case 'count':
                 self._sendToPipe(('count', [len(self._services)]))
+
+        return None
 
     def _callsInterrupter(self) -> None:
         """
@@ -258,6 +277,10 @@ class GlobalServiceManager:
         self._isLoaded = False
         self._isAlive = True # DO NOT TOUCH IF YOU DONG KNOW WHAT YOU'RE DOING
 
+        # list with active services and workers which process this service
+        # format:  service_id : worker_id
+        self._processingServices: dict[str, str] = {}
+
         # workers list, to control workers wia Worker ID and workers calls
         # contains workers pipes, which are used to make workers calls
         self._workersConnections: dict[str, Connection] = {}
@@ -294,8 +317,8 @@ class GlobalServiceManager:
                 logger.debug(f'Successfully worker call. ID: {_id}, Call: {call}, Args count: {len(args)}.')
                 return fb, data
         except (BrokenPipeError, OSError, EOFError, ValueError): pass
-
         return None
+
 
     @afterLoad
     def _logsHandler(self):
@@ -357,6 +380,9 @@ class GlobalServiceManager:
 
         if result is None: return False
         if result[0] != 'done': return False
+
+        # adding to the list with current worker
+        self._processingServices[service.id] = workerId
         return True
 
 
@@ -372,9 +398,27 @@ class GlobalServiceManager:
 
 
     @afterLoad
-    def remove(self, service: IService) -> None:
-        # TODO: Finish remove method for removing services
-        pass
+    def remove(self, *args) -> None:
+        """
+            Analog to the "kill" or terminate service command.
+            Use it to terminate service`s task and stop the service.
+            (Removes it from the worker)
+        """
+        results: list[str] = []
+
+        for service in args:
+            # if service is not processing now
+            if not service.id in self._processingServices: continue
+
+            response = self._workerCall(
+                self._processingServices.get(service.id), 'remove', service.id
+            )
+            if not response is None: results.append(service.id)
+
+        logger.info(
+            f'Successfully removed (stopped) { len(list(filter(lambda x: x, results))) } services.',
+            ' [' + ' ,'.join(results) + ']' if results else ''
+        )
 
 
     def load(self) -> None:
@@ -417,7 +461,7 @@ class GlobalServiceManager:
         logger.debug(f'Starting logs handler.')
         threading.Thread(target=self._logsHandler).start()
 
-
+    @afterLoad
     def kill(self) -> bool:
         """
             Hard kill the workers. Terminate all processes.

@@ -220,3 +220,13 @@ class Core(ICore):
 
         self._GSM.add(service)
         return True
+
+
+    @syscall
+    def killService(self, service: IService|str) -> bool:
+        """
+            Terminate the service (Hard kill)
+        """
+
+        self._GSM.remove(service)
+        return True

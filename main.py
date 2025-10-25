@@ -229,6 +229,10 @@ def main():
     )
     core.processService('98883743344a4e5a30@3c067526')
 
+    time.sleep(1)
+    core.killService('98883743344a4e5a30@3c067526')
+
+
     # time.sleep(60)
     # core.stop()
 
