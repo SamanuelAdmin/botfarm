@@ -4,6 +4,7 @@ from datetime import datetime
 
 from core.core import Core
 from core.middleware import afterLoad
+from core.service import HistoryObject
 from services.panel_manager.manager import PanelManager
 from scripts.control_script import *
 
@@ -52,24 +53,35 @@ class Dispatcher:
         newOrders = self._panelManager.getNewOrders()
 
 
+    def _loadService(self, serviceId: str) -> list[str]:
+        """
+            Post load for a service.
+            Getting all active accounts via syscalls and adbScript.
+        """
+
+        self._core.addTaskToService(serviceId, parseActiveAccounts)
+        self._core.processService(serviceId)
+        data: Optional[list[HistoryObject]]
+
+        while True:
+            data = self._core.getServiceHistory(serviceId)
+            if data: break
+
+        return data[0].result
+
+
     def load(self):
         """
             Function for starting all loading processes.
             Getting all active accounts using adbScript for parsing them all.
         """
+
         logger.info('loading dispatcher...')
         startTime = datetime.now()
 
         for serviceId in self._core.servicesTable:
-            self._core.addTaskToService(serviceId, parseActiveAccounts)
-            self._core.processService(serviceId)
-
-            while True:
-                print(self._core.getServiceHistory(serviceId))
-                time.sleep(1)
-
+            print(self._loadService(serviceId))
             break
-
 
         self._isLoaded = True
         logger.info(f'Dispatcher loaded in {(datetime.now() - startTime).total_seconds()} seconds.')

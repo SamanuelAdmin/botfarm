@@ -233,7 +233,6 @@ def main():
     # )
     # core.processService('98893a363136463157@3c067526')
 
-    logger.info(os.getenv('PANEL_API_KEY'))
     panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
     dispatcher = Dispatcher(core, panelManager)
     dispatcher.load()

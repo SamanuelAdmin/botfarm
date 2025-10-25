@@ -60,6 +60,7 @@ class WorkerEvent:
     type: WorkerEventTypes
     serviceId: Optional[str] = None
     context: list = field(default_factory=list)
+    def __str__(self): return f'[{self.workerId}] {self.serviceId} -> ({self.type}) {self.context}'
 
 class WorkerCall(enum.StrEnum):
     WORKER_STOP = 'stop'
@@ -448,6 +449,7 @@ class GlobalServiceManager:
             This function must be fast as hell.
         """
 
+
         match event.type:
             case WorkerEventTypes.SERVICE_STARTED:
                 self._processingServices[event.serviceId] = event.workerId
@@ -545,9 +547,9 @@ class GlobalServiceManager:
             ' [' + ' ,'.join(results) + ']' if results else ''
         )
 
-    def getServiceHistory(self, serviceId: str) -> Optional[list[HistoryObject]]:
+    def getServiceHistory(self, service: IService) -> Optional[list[HistoryObject]]:
         # getting worker which process this service
-        self._serviceHistoryBuffer.pop(serviceId, None)
+        return self._serviceHistoryBuffer.pop(service.id, None)
 
 
     def load(self) -> None:

@@ -9,6 +9,7 @@ from typing import Callable, Any, List, Optional
 from core.tasks.queue import TaskQueue
 from core.tasks.task import ITask
 from meta.queue import IQueue
+from scripts.login_script import taskTable
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
@@ -65,6 +66,7 @@ class IService(ABC):
 class HistoryObject:
     taskId: str
     result: Any
+    def __str__(self): return f'{self.taskId}: {self.result}'
 
 class TaskHistory:
     def __init__(self):

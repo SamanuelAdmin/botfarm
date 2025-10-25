@@ -244,4 +244,4 @@ class Core(ICore):
             ONLY FOR FINISHED SERVICES!
         """
 
-        return self._GSM.getServiceHistory(service.id)
+        return self._GSM.getServiceHistory(service)

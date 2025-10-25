@@ -25,22 +25,22 @@ def parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list
     accountsSection: Optional[bs4.element.Tag] = adbAuto.getDumpElement(
         dump, {'resource-id': "com.instagram.android:id/recycler_view_container_id"}
     )
+    print(dump)
+    accountsSection = accountsSection.node if accountsSection else None
 
     if not accountsSection:
         logger.error(adb.serial, 'Cannot find accounts section. Aborting...')
         return []
 
-    accountsSection = accountsSection.get('node', None)
 
     for accountSection in accountsSection.find_all('node'):
-        innerNode: Optional[bs4.element.Tag] = accountSection.get('node')
-        if not innerNode: continue
+        try:
+            activeAccount = accountSection.node.node \
+                .find(attrs={'index': "1"}).get('text')
+            if activeAccount and ' ' not in activeAccount:
+                activeAccounts.append(activeAccount)
+        except (AttributeError, ValueError): continue
 
-        testSection: Optional[bs4.element.Tag] = innerNode.get('node', None)
-        if not testSection: continue
-
-        activeAccount = testSection.get('content-desc')
-        if activeAccount: activeAccounts.append(activeAccount)
 
     return activeAccounts
 
@@ -82,6 +82,6 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
         for acc in parseAccounts(secondScreenDump): activeAccounts.append(acc)
 
     logger.info(adb.serial, 'Gotten active accounts: ' + str(len(activeAccounts)), '. Returning...')
-    adb.tap(Dot(300, 300).make_random())
+    for _ in range(2): adb.tap(Dot(300, 100).make_random())
 
     return activeAccounts
