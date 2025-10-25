@@ -185,6 +185,11 @@ class Core(ICore):
 
 
     def stop(self):
+        """
+            Core`s hard kill method.
+            DO NOT USE IT, IT'S DANGEROUS!
+        """
+
         self._GSM.kill()
 
         self._isStarted = False

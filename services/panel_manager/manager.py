@@ -1,7 +1,5 @@
 import time
-from typing import Any
 
-from meta.crud import CRUD
 from meta.exceptions import OrderAlreadyExists
 from meta.schemas import OrderModel
 from services.db_services.order_manager import OrderManager
@@ -12,9 +10,9 @@ from services.panel_manager.parser_service import PanelParserService
 
 
 
-class PanelManager(CRUD):
+class PanelManager:
     """
-        There will be business logic for panel manager.
+        Panel manager - manager for all logic for getting and saving orders.
         Manage api_service and parser_service for get new orders, every 15 seconds for example.
     """
 
@@ -24,43 +22,29 @@ class PanelManager(CRUD):
         self._orderManager = orderManager
 
 
-    def create(self, *args, **kwargs) -> None:
-        # !TODO finish the CRUD implementation
-        pass
-
-    def read(self, *args) -> Any:
-        # !TODO finish the CRUD implementation
-        pass
-
-    def update(self, *args, **kwargs) -> None:
-        # !TODO finish the CRUD implementation
-        pass
-
-    def delete(self, *args, **kwargs) -> None:
-        # !TODO finish the CRUD implementation
-        pass
-
     def getFirstOrder(self) -> OrderData:
         api_json = self._apiService.getSortedOrders()
         orders_list = self._parserService.parseOrdersJson(api_json)
-        self._orderManager.add(
-            OrderModel(
-                id=orders_list[0].id,
-                link=orders_list[0].link,
-                quantity=orders_list[0].quantity,
-                created_date=orders_list[0].created_date,
-                created_timestamp=orders_list[0].created_timestamp,
-                service_id=orders_list[0].service_id,
-                service_type=orders_list[0].service_type,
-                price=orders_list[0].price,
-            )
+
+        newOrder = OrderModel(
+            id=orders_list[0].id,
+            link=orders_list[0].link,
+            quantity=orders_list[0].quantity,
+            created_date=orders_list[0].created_date,
+            created_timestamp=orders_list[0].created_timestamp,
+            service_id=orders_list[0].service_id,
+            service_type=orders_list[0].service_type,
+            price=orders_list[0].price,
         )
+
+        self._orderManager.add(newOrder)
         return orders_list[0]
 
 
     def getNewOrders(self) -> list[OrderData]:
         """
-            Gets orders starting from the last one
+            Gets orders starting from the last one.
+            Use it to easily parsing new orders.
         """
         last_order = self._orderManager.getLastOrder()
         if not last_order: raise NoLastOrder

@@ -1,8 +1,10 @@
+import enum
 import os
 import sys
 import threading
 import uuid
 import time
+from dataclasses import dataclass
 from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
@@ -13,6 +15,7 @@ from core.service import IService
 from core.exceptions import *
 from meta.singleton import Singleton
 from meta.stdout import IStdout
+
 
 
 logger = Logger()
@@ -40,12 +43,27 @@ class WorkerStdout(IStdout):
         self._baseStdout.flush()
 
 
+
+class WorkerCall(enum.StrEnum):
+    WORKER_STOP = 'stop'
+    SERVICE_ADD = 'add'
+    SERVICE_REMOVE = 'remove'
+    SERVICES_COUNT = 'count' # count of services is processing
+    SERVICES = 'services' # get ids of services is processing
+    SERVICE_CHECK = 'check_service' # check if service is processing
+
+
+
 class Worker:
     '''
         Worker - one physic core loader,
         Process all tasks at the same time on one core via asyncio
         If service has no tasks al all - remove from the queue automatically
         Worker works only with active services.
+
+        Have 2 connection methods - 2 pipes.
+        Worker pipe (_pipe) - for getting commands and sending responses.
+        Logs pipe (logger) - for logs only.
     '''
 
     def __init__(self, iteratorDelay: float=0.05):
@@ -148,11 +166,13 @@ class Worker:
         """
 
         self._sendLog('debug', f'System call {name}. Arguments count: {len(args)}')
-        match name:
-            case 'stop': self._del()
-            case 'add':
-                processServices = list(self._services.keys())
 
+        # "public" information
+        processServices = list(self._services.keys())
+
+        match name:
+            case WorkerCall.WORKER_STOP: self._del()
+            case WorkerCall.SERVICE_ADD:
                 for service in args:
                     if isinstance(service, IService) and service.id not in processServices:
                         # adding service
@@ -160,8 +180,7 @@ class Worker:
 
                 self._sendToPipe(('done', []))
 
-            case 'remove':
-                processServices = list(self._services.keys())
+            case WorkerCall.SERVICE_REMOVE:
                 serviceId = args[0]
                 if not isinstance(serviceId, str) or serviceId not in processServices:
                     return self._sendToPipe(('error', ['Cannot remove service ', serviceId]))
@@ -169,8 +188,21 @@ class Worker:
                 self._killService(self._services[serviceId])
                 self._sendToPipe(('done', []))
 
-            case 'count':
+            case WorkerCall.SERVICES_COUNT:
                 self._sendToPipe(('count', [len(self._services)]))
+
+            case WorkerCall.SERVICES:
+                self._sendToPipe(('services', list(self._services.keys())))
+
+            case WorkerCall.SERVICE_CHECK:
+                serviceId = args[0]
+
+                if not isinstance(serviceId, str):
+                    return self._sendToPipe(
+                        ( 'error', ['Cannot find service ', serviceId] )
+                    )
+
+                self._sendToPipe(('check_service', [serviceId in processServices]))
 
         return None
 
@@ -305,6 +337,7 @@ class GlobalServiceManager:
     def _workerCall(self, _id: str, call: str, *args: Any) -> Optional[tuple[str, list[Any]]]:
         connection = self._workersConnections.get(_id)
         if not connection: raise NotFoundException('Connection not found.')
+        if call not in WorkerCall: raise NotFoundException('Call name not found.')
 
         try:
             connection.send((call, args))
@@ -347,7 +380,6 @@ class GlobalServiceManager:
                     del self._workersLogsConnections[workerId]
 
 
-
     @afterLoad
     def _getLessLoadedWorker(self) -> str:
         """
@@ -359,7 +391,7 @@ class GlobalServiceManager:
         result: dict[int, str] = {} # format: count_of_services - worker id
 
         for serviceId, serviceConnection in self._workersConnections.items():
-            callResult: Optional[tuple[str, list[int]]] = self._workerCall(serviceId, 'count')
+            callResult: Optional[tuple[str, list[int]]] = self._workerCall(serviceId, WorkerCall.SERVICES_COUNT)
             if callResult is None: continue
 
             if callResult[0] == 'count':
@@ -375,7 +407,7 @@ class GlobalServiceManager:
     def _loadService(self, service: IService) -> bool:
         workerId = self._getLessLoadedWorker()
         logger.debug(f'Adding new service to {workerId}...')
-        result: Optional[tuple[str, Any]] = self._workerCall(workerId, 'add', service)
+        result: Optional[tuple[str, Any]] = self._workerCall(workerId, WorkerCall.SERVICE_ADD, service)
         logger.debug(f'Adding to {workerId} - {result}.')
 
         if result is None: return False
@@ -411,7 +443,7 @@ class GlobalServiceManager:
             if not service.id in self._processingServices: continue
 
             response = self._workerCall(
-                self._processingServices.get(service.id), 'remove', service.id
+                self._processingServices.get(service.id), WorkerCall.SERVICE_REMOVE, service.id
             )
             if not response is None: results.append(service.id)
 

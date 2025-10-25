@@ -24,9 +24,7 @@ class OrderManager:
             raise OrderAlreadyExists("This order already exists")
 
         self.repository.create(
-            Order(
-                **order.model_dump()
-            )
+            Order( **order.model_dump() )
         )
 
     def getLastOrder(self) -> Order|None:
