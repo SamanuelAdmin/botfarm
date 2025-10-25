@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
+from queue import Empty
 
 from core.middleware import afterLoad
 from core.logger import Logger
@@ -44,9 +45,23 @@ class WorkerStdout(IStdout):
 
 
 
+class WorkerStatus(enum.IntEnum):
+    OK_STATUS = 0
+    ERROR_STATUS = 1
+
+class WorkerEventTypes(enum.StrEnum):
+    SERVICE_STARTED = "service_started"
+    SERVICE_FINISHED = "service_finished"
+    SERVICE_ERROR = "service_error"
+
+@dataclass
+class WorkerEvent:
+    workerId: str
+    type: WorkerEventTypes
+    serviceId: Optional[str] = None
+    context: tuple[Any] = ()
+
 class WorkerCall(enum.StrEnum):
-    OK_STATUS = 'done'
-    ERROR_STATUS = 'error'
     WORKER_STOP = 'stop'
     SERVICE_ADD = 'add'
     SERVICE_REMOVE = 'remove'
@@ -54,6 +69,7 @@ class WorkerCall(enum.StrEnum):
     SERVICES = 'services' # get ids of services is processing
     SERVICE_CHECK = 'check_service' # check if service is processing
     SERVICE_HISTORY = 'service_history'
+
 
 
 class Worker:
@@ -64,7 +80,7 @@ class Worker:
         Worker works only with active services.
 
         Have 2 connection methods - 2 pipes.
-        Worker pipe (_pipe) - for getting commands and sending responses.
+        Worker pipe (_controlPipe) - for getting commands and sending responses.
         Logs pipe (logger) - for logs only.
     '''
 
@@ -76,7 +92,7 @@ class Worker:
         self._customStdout: IStdout
 
         # pipe for sending logs to GSM logs handler
-        self._logger: Connection
+        self._logsPipe: Connection
 
         # iterator lifetime controller. Turn it on while starting and turn off with deleting worker.
         # DO NOT TOUCH NOWHERE EXCEPT THAT
@@ -86,8 +102,13 @@ class Worker:
         # (key) serviceID : Service (value)
         # YOU CAN CHANGE IT ONLY IN ITERATOR TO AVOID SYNC PROBLEMS
         self._services: dict[str, IService] = {}
-        # pipe for control workers (get workers calls and return calls result)
-        self._pipe: Optional[Connection] = None
+
+        # pipes for manage worker
+        self._controlPipe: Optional[Connection] = None # stdin analog (takes and process worker calls)
+        # MUST BE QUEUE - safer and faster
+        self._eventsPipe: Optional[multiprocessing.Queue] = None  # stdout analog (gives events messages)
+        self._logsPipe: Optional[Connection] = None    # stderr analog (for any logs, LOGS ONLY)
+
 
     def __del__(self):
         try: self._del()
@@ -117,8 +138,7 @@ class Worker:
             self._sendLog( ('info', 'Worker started') )
         """
 
-        try:
-            self._logger.send( (_type, f'{self._loggerPrefix} {info}') )
+        try: self._logsPipe.send((_type, f'{self._loggerPrefix} {info}'))
         except (BrokenPipeError, OSError) as error: pass
 
     def _sendCaughtLog(self, text: str) -> None:
@@ -129,6 +149,19 @@ class Worker:
             take any "type" attributes.
         """
         self._sendLog('info', text)
+
+
+    def _sendEvent(self, _type: WorkerEventTypes, serviceId: Optional[str]=None, context: Optional[tuple[Any]]=None) -> None:
+        """
+            Send events, which will be process by events' processor.
+            Format: WorkerEventTypes, [... data ...]
+        """
+
+        try:
+            self._eventsPipe.put(
+                WorkerEvent( workerId=self._id, type=_type, serviceId=serviceId, context=context )
+            )
+        except (BrokenPipeError, OSError) as error: pass
 
 
     def _del(self) -> None:
@@ -142,10 +175,10 @@ class Worker:
         self._sendLog('debug','All services killed.')
 
         try:
-            self._pipe.send((WorkerCall.OK_STATUS, []))
+            self._controlPipe.send((WorkerStatus.OK_STATUS, []))
             # waiting for send finish
             time.sleep(self._iteratorDelay * 10)
-            self._pipe.close()
+            self._controlPipe.close()
             self._sendLog('debug', 'Pipe closed.')
         except (BrokenPipeError, OSError) as error:
             self._sendLog('debug', f'Cannot close pipe. {error}')
@@ -180,15 +213,15 @@ class Worker:
                         # adding service
                         self._addService(service)
 
-                self._sendToPipe((WorkerCall.OK_STATUS, []))
+                self._sendToPipe((WorkerStatus.OK_STATUS, []))
 
             case WorkerCall.SERVICE_REMOVE:
                 serviceId = args[0]
                 if not isinstance(serviceId, str) or serviceId not in processServices:
-                    return self._sendToPipe((WorkerCall.ERROR_STATUS, ['Cannot remove service ', serviceId]))
+                    return self._sendToPipe((WorkerStatus.ERROR_STATUS, ['Cannot remove service ', serviceId]))
 
                 self._killService(self._services[serviceId])
-                self._sendToPipe((WorkerCall.OK_STATUS, []))
+                self._sendToPipe((WorkerStatus.OK_STATUS, []))
 
             case WorkerCall.SERVICES_COUNT:
                 self._sendToPipe((WorkerCall.SERVICES_COUNT, [len(self._services)]))
@@ -201,7 +234,7 @@ class Worker:
 
                 if not isinstance(serviceId, str):
                     return self._sendToPipe(
-                        ( WorkerCall.ERROR_STATUS, ['Cannot find service ', serviceId] )
+                        ( WorkerStatus.ERROR_STATUS, ['Cannot find service ', serviceId] )
                     )
 
                 self._sendToPipe((WorkerCall.SERVICE_CHECK, [serviceId in processServices]))
@@ -209,7 +242,7 @@ class Worker:
             case WorkerCall.SERVICE_HISTORY:
                 serviceId = args[0]
                 if not isinstance(serviceId, str):
-                    return self._sendToPipe( (WorkerCall.ERROR_STATUS, ['Cannot find service ', serviceId]) )
+                    return self._sendToPipe( (WorkerStatus.ERROR_STATUS, ['Cannot find service ', serviceId]) )
 
                 self._sendToPipe( (WorkerCall.SERVICE_HISTORY, self._services[serviceId].history) )
 
@@ -222,14 +255,14 @@ class Worker:
         """
 
         try:
-            if self._pipe.poll(timeout=self._iteratorDelay / 2):
-                call: tuple[str, tuple|list] = self._pipe.recv()
+            if self._controlPipe.poll(timeout=self._iteratorDelay / 2):
+                call: tuple[str, tuple|list] = self._controlPipe.recv()
                 self._callProcessor(call[0], *call[1])
         except (BrokenPipeError, OSError, EOFError): self._del()
 
 
     def _sendToPipe(self, data: Any) -> None:
-        try: self._pipe.send(data)
+        try: self._controlPipe.send(data)
         except (BrokenPipeError, OSError, EOFError): self._del()
 
 
@@ -237,13 +270,14 @@ class Worker:
         service.kill()
         del self._services[service.id]
         self._sendLog('info', f'Service {service.id} killed.')
+        self._sendEvent(WorkerEventTypes.SERVICE_FINISHED, [service.id])
 
     def _addService(self, service: IService) -> None:
         self._services[service.id] = service
 
 
     def _iterator(self, ):
-        if not self._pipe:
+        if not self._controlPipe:
             self._sendLog('error', 'Cannot start workers iterator without pipe.')
             raise UnableToDo('Cannot start workers iterator without pipe.')
 
@@ -263,7 +297,6 @@ class Worker:
             for serviceId in list(self._services.keys()):
                 service = self._services[serviceId]
 
-
                 # starting if it has task(s) and not already started
                 if not checkIfServiceStarted(service):
                     if service.loadedTasksCount == 0:
@@ -272,23 +305,24 @@ class Worker:
                     else:
                         # service.start starts new thread, works fine with IO bound tasks
                         service.start()
+                        self._sendEvent(WorkerEventTypes.SERVICE_STARTED, [service.id])
                         self._sendLog('debug', f'Process new task from service {serviceId}.')
-                        continue
 
 
-    def start(self, workerPipe: Connection, logger: Connection) -> None:
+    def start(self, controlPipe: Connection, eventsPipe: multiprocessing.Queue, logsPipe: Connection) -> None:
         """
             You need to set pipe from the main process to avoid process isolation problems.
+            its new process, isolated, because iterator blocks the process/thread
         """
-        self._logger = logger
 
-        # its new process, isolated, because iterator blocks the process/thread
-        self._pipe = workerPipe
-        self._isAlive = True
+        self._controlPipe = controlPipe
+        self._eventsPipe = eventsPipe
+        self._logsPipe = logsPipe
 
         # creating custom stdout for new started worker
         self._customStdout = WorkerStdout(self._sendCaughtLog)
 
+        self._isAlive = True
         self._iterator()
 
 
@@ -311,10 +345,11 @@ class GlobalServiceManager:
 
     __metaclass__ = Singleton
 
-    def __init__(self, max_units: int, logsHandlerDelay: float=1):
+    def __init__(self, max_units: int, eventsProcessorDelay: float=0.05, logsHandlerDelay: float=1):
         # changing process creating method
         self._context = multiprocessing.get_context("fork")
         self._max_units = max_units
+        self._eventsProcessorDelay = eventsProcessorDelay
         self._logsHandlerDelay = logsHandlerDelay
         self._isLoaded = False
         self._isAlive = True # DO NOT TOUCH IF YOU DONG KNOW WHAT YOU'RE DOING
@@ -327,6 +362,7 @@ class GlobalServiceManager:
         # contains workers pipes, which are used to make workers calls
         self._workersConnections: dict[str, Connection] = {}
         self._workersLogsConnections: dict[str, Connection] = {}
+        self._workersEventsQueue: multiprocessing.Queue = multiprocessing.Queue() # faster and safer as raw Pipes
 
         # table with all workers processes
         # use it to save and terminate processes
@@ -390,6 +426,35 @@ class GlobalServiceManager:
                     del self._workersLogsConnections[workerId]
 
 
+    def _processEvent(self, event: WorkerEvent) -> None:
+        """
+            Only fresh information from the workers.
+            Change critically tables only here by workers events.
+            This function must be fast as hell.
+        """
+
+        match event.type:
+            case WorkerEventTypes.SERVICE_STARTED:
+                self._processingServices[event.serviceId] = event.workerId
+            case WorkerEventTypes.SERVICE_FINISHED:
+                self._processingServices.pop(event.serviceId)
+
+
+    @afterLoad
+    def _eventsProcessor(self, eventsBufferSize: int=10) -> None:
+        """
+            Catch and process every worker`s event.
+        """
+
+        while self._isAlive:
+            try:
+                self._processEvent( self._workersEventsQueue.get() )
+            except (BrokenPipeError, OSError, EOFError) as e:
+                logger.error(f'Events processor crushed with {e}.')
+                break
+
+
+
     @afterLoad
     def _getLessLoadedWorker(self) -> str:
         """
@@ -421,10 +486,8 @@ class GlobalServiceManager:
         logger.debug(f'Adding to {workerId} - {result}.')
 
         if result is None: return False
-        if result[0] != WorkerCall.OK_STATUS: return False
+        if result[0] != WorkerStatus.OK_STATUS: return False
 
-        # adding to the list with current worker
-        self._processingServices[service.id] = workerId
         return True
 
 
@@ -485,12 +548,13 @@ class GlobalServiceManager:
             controlParentPipe, controlChildPipe = multiprocessing.Pipe()
             self._workersConnections[worker.id] = controlParentPipe
 
+            # new connection for logs
             logsParentPipe, logsChildPipe = multiprocessing.Pipe()
             self._workersLogsConnections[worker.id] = logsParentPipe
 
             # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
             workerProcess = self._context.Process(
-                target=worker.start, args=(controlChildPipe, logsChildPipe), name=f"{worker.workerPrefix}_{worker.id}"
+                target=worker.start, args=(controlChildPipe, self._workersEventsQueue, logsChildPipe), name=f"{worker.workerPrefix}_{worker.id}"
             )
             self._workersProcesses[worker.id] = workerProcess
             workerProcess.start()
@@ -502,6 +566,8 @@ class GlobalServiceManager:
         # post loading
         logger.debug(f'Starting logs handler.')
         threading.Thread(target=self._logsHandler).start()
+        logger.debug(f'Starting events processor.')
+        threading.Thread(target=self._eventsProcessor).start()
 
 
     @afterLoad

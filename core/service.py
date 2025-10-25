@@ -72,9 +72,7 @@ class TaskHistory:
         self._history: dict[str, HistoryObject] = {}
 
     def get(self, taskId: str) -> Optional[bool | Exception]:
-        tempValue = copy.deepcopy(self._history.get(taskId, None))
-        if tempValue is not None: del self._history[taskId]
-        return tempValue
+        return self._history.pop(taskId, None)
 
     def add(self, historyObject: HistoryObject) -> None:
         self._history[historyObject.taskId] = historyObject
