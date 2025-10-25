@@ -15,7 +15,8 @@ class PanelParserService:
             service_id=order['service_id'],
             service_type=order['service_type'],
             created_date=datetime.strptime(order['created'], '%Y-%m-%d %H:%M:%S'),
-            created_timestamp=order['created_timestamp']
+            created_timestamp=order['created_timestamp'],
+            status=order['status']
         )
 
     def parseOrdersJson(self, apiJson: dict) -> list[OrderData]:

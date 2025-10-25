@@ -51,9 +51,10 @@ class PanelApiService:
     def getOrdersJsonCreatedFrom(self, createdFrom: float) -> dict:
         """
             Order creation UNIX timestamp (lower bound).
+            Sorting: "sort": "date-asc"
         """
         res = self._requestApi(
-            PanelApiMethods.GET, '', {'created_from': createdFrom}
+            PanelApiMethods.GET, '', {'created_from': createdFrom, 'sort': 'date-asc'}
         )
         return self._getJson(res)
 

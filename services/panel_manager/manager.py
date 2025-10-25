@@ -1,10 +1,9 @@
 import time
 
-from meta.exceptions import OrderAlreadyExists
-from meta.schemas import OrderModel
+from meta.exceptions import NoLastOrder
+
 from services.db_services.order_manager import OrderManager
 from services.panel_manager.api_service import PanelApiService
-from services.panel_manager.exceptions import NoLastOrder
 from services.panel_manager.models import OrderData
 from services.panel_manager.parser_service import PanelParserService
 
@@ -15,39 +14,31 @@ class PanelManager:
         Panel manager - manager for all logic for getting and saving orders.
         Manage api_service and parser_service for get new orders, every 15 seconds for example.
     """
-
-    def __init__(self, orderManager: OrderManager, apiKey: str):
+    def __init__(self, orderManager: OrderManager, apiKey: str, parsingDelay: int = 15):
         self._parserService = PanelParserService()
         self._apiService = PanelApiService(apiKey)
         self._orderManager = orderManager
+        self._parsingDelay = parsingDelay
+        self._parserState = False
 
-
-    def getFirstOrder(self) -> OrderData:
+    def _getFirstOrder(self) -> None:
         api_json = self._apiService.getSortedOrders()
         orders_list = self._parserService.parseOrdersJson(api_json)
 
-        newOrder = OrderModel(
-            id=orders_list[0].id,
-            link=orders_list[0].link,
-            quantity=orders_list[0].quantity,
-            created_date=orders_list[0].created_date,
-            created_timestamp=orders_list[0].created_timestamp,
-            service_id=orders_list[0].service_id,
-            service_type=orders_list[0].service_type,
-            price=orders_list[0].price,
-        )
+        order = orders_list[0]
+        if self._orderManager.exists(order.id): 
+            return
+        self._orderManager.createOrder(order)
 
-        self._orderManager.add(newOrder)
-        return orders_list[0]
-
-
-    def getNewOrders(self) -> list[OrderData]:
+    def _getNewOrders(self) -> list[OrderData]:
         """
             Gets orders starting from the last one.
             Use it to easily parsing new orders.
         """
         last_order = self._orderManager.getLastOrder()
         if not last_order: raise NoLastOrder
+        if not last_order:
+            raise NoLastOrder
 
         #WARN: This part can go to new parser service
         apiJson = self._apiService.getOrdersJsonCreatedFrom(last_order.created_timestamp)
@@ -55,37 +46,30 @@ class PanelManager:
 
         return parsed[1:]
 
-
-    def start(self, delay: int=15, do_not_use_in_production: bool=False) -> None:
+    def stopParser(self) -> None:
+        self._parserState = False
+    
+    def startParse(self, do_not_use_in_production: bool = False) -> None:
         """
             Test method, this functions will be in the order`s dispatcher.
             Do not use this in production because you cannot moderate order with this code.
             If you test it via tests.py file or another test case - please, set
             do_not_use_in_production = True
             to avoid exceptions.
-        """
 
+            Parsing while parserState is True
+        """
         if __name__ != "__main__" and not do_not_use_in_production:
             raise Exception('For tests only! Do not use in production!')
 
-        while True:
-            new = self.getNewOrders()
+        self._parserState = True
+        self._getFirstOrder()
+        while self._parserState:
+            new_orders = self._getNewOrders()
+            for order in new_orders:
+                self._orderManager.createOrder(order)
+                print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
 
-            for order in new:
-                try:
-                    self._orderManager.add(
-                        OrderModel(
-                            id=order.id,
-                            link=order.link,
-                            quantity=order.quantity,
-                            created_date=order.created_date,
-                            created_timestamp=order.created_timestamp,
-                            service_id=order.service_id,
-                            service_type=order.service_type,
-                            price=order.price,
-                        )
-                    )
-                    print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
-                except OrderAlreadyExists: continue
+            time.sleep(self._parsingDelay)
 
-            time.sleep(delay)
+        

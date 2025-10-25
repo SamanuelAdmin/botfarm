@@ -12,6 +12,6 @@ orderManager = OrderManager()
 panelManager = PanelManager(orderManager, apiKey)
 
 def test_panel_manager():
-    panelManager.start(do_not_use_in_production=True)
+    panelManager.startParse(do_not_use_in_production=True)
 
 test_panel_manager()

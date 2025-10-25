@@ -1,5 +1,7 @@
 from typing import Any, Type
 
+from sqlalchemy.sql import exists
+
 from db.data.base import Base
 
 from db.controller import DatabaseController

@@ -1,7 +1,10 @@
 import datetime
+
 from db.data.base import Base
+from meta.enums import OrderStatus
 
 from sqlalchemy.orm import Mapped, mapped_column
+
 
 
 class Order(Base):
@@ -15,3 +18,4 @@ class Order(Base):
     service_id: Mapped[int]
     service_type: Mapped[str]
     price: Mapped[float]
+    status: Mapped[OrderStatus]
