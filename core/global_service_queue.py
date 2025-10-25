@@ -4,7 +4,7 @@ import sys
 import threading
 import uuid
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
@@ -35,7 +35,7 @@ class WorkerStdout(IStdout):
     def __del__(self):
         sys.stdout = sys.__stdout__ # restore previous stdout
 
-    def write(self, *args: *tuple[str]) -> None:
+    def write(self, *args) -> None:
         formatString = ' '.join(args).replace('\n', '')
         if len(formatString) == 0: return
         self._interrupt(formatString)
@@ -59,7 +59,7 @@ class WorkerEvent:
     workerId: str
     type: WorkerEventTypes
     serviceId: Optional[str] = None
-    context: tuple[Any] = ()
+    context: tuple = field(default_factory=tuple)
 
 class WorkerCall(enum.StrEnum):
     WORKER_STOP = 'stop'
@@ -270,7 +270,7 @@ class Worker:
         service.kill()
         del self._services[service.id]
         self._sendLog('info', f'Service {service.id} killed.')
-        self._sendEvent(WorkerEventTypes.SERVICE_FINISHED, [service.id])
+        self._sendEvent(WorkerEventTypes.SERVICE_FINISHED, serviceId=service.id)
 
     def _addService(self, service: IService) -> None:
         self._services[service.id] = service
@@ -305,7 +305,7 @@ class Worker:
                     else:
                         # service.start starts new thread, works fine with IO bound tasks
                         service.start()
-                        self._sendEvent(WorkerEventTypes.SERVICE_STARTED, [service.id])
+                        self._sendEvent(WorkerEventTypes.SERVICE_STARTED, serviceId=serviceId)
                         self._sendLog('debug', f'Process new task from service {serviceId}.')
 
 
@@ -448,7 +448,10 @@ class GlobalServiceManager:
 
         while self._isAlive:
             try:
-                self._processEvent( self._workersEventsQueue.get() )
+                self._processEvent(
+                    self._workersEventsQueue.get(timeout=self._eventsProcessorDelay)
+                )
+            except Empty: continue
             except (BrokenPipeError, OSError, EOFError) as e:
                 logger.error(f'Events processor crushed with {e}.')
                 break
@@ -565,9 +568,9 @@ class GlobalServiceManager:
 
         # post loading
         logger.debug(f'Starting logs handler.')
-        threading.Thread(target=self._logsHandler).start()
+        threading.Thread(target=self._logsHandler, daemon=True, name="GSM-LogsHandler").start()
         logger.debug(f'Starting events processor.')
-        threading.Thread(target=self._eventsProcessor).start()
+        threading.Thread(target=self._eventsProcessor, daemon=True, name="GSM-EventProcessor").start()
 
 
     @afterLoad
