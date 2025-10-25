@@ -45,13 +45,15 @@ class WorkerStdout(IStdout):
 
 
 class WorkerCall(enum.StrEnum):
+    OK_STATUS = 'done'
+    ERROR_STATUS = 'error'
     WORKER_STOP = 'stop'
     SERVICE_ADD = 'add'
     SERVICE_REMOVE = 'remove'
     SERVICES_COUNT = 'count' # count of services is processing
     SERVICES = 'services' # get ids of services is processing
     SERVICE_CHECK = 'check_service' # check if service is processing
-
+    SERVICE_HISTORY = 'service_history'
 
 
 class Worker:
@@ -140,7 +142,7 @@ class Worker:
         self._sendLog('debug','All services killed.')
 
         try:
-            self._pipe.send(('done', []))
+            self._pipe.send((WorkerCall.OK_STATUS, []))
             # waiting for send finish
             time.sleep(self._iteratorDelay * 10)
             self._pipe.close()
@@ -178,33 +180,41 @@ class Worker:
                         # adding service
                         self._addService(service)
 
-                self._sendToPipe(('done', []))
+                self._sendToPipe((WorkerCall.OK_STATUS, []))
 
             case WorkerCall.SERVICE_REMOVE:
                 serviceId = args[0]
                 if not isinstance(serviceId, str) or serviceId not in processServices:
-                    return self._sendToPipe(('error', ['Cannot remove service ', serviceId]))
+                    return self._sendToPipe((WorkerCall.ERROR_STATUS, ['Cannot remove service ', serviceId]))
 
                 self._killService(self._services[serviceId])
-                self._sendToPipe(('done', []))
+                self._sendToPipe((WorkerCall.OK_STATUS, []))
 
             case WorkerCall.SERVICES_COUNT:
-                self._sendToPipe(('count', [len(self._services)]))
+                self._sendToPipe((WorkerCall.SERVICES_COUNT, [len(self._services)]))
 
             case WorkerCall.SERVICES:
-                self._sendToPipe(('services', list(self._services.keys())))
+                self._sendToPipe((WorkerCall.SERVICES, list(self._services.keys())))
 
             case WorkerCall.SERVICE_CHECK:
                 serviceId = args[0]
 
                 if not isinstance(serviceId, str):
                     return self._sendToPipe(
-                        ( 'error', ['Cannot find service ', serviceId] )
+                        ( WorkerCall.ERROR_STATUS, ['Cannot find service ', serviceId] )
                     )
 
-                self._sendToPipe(('check_service', [serviceId in processServices]))
+                self._sendToPipe((WorkerCall.SERVICE_CHECK, [serviceId in processServices]))
+
+            case WorkerCall.SERVICE_HISTORY:
+                serviceId = args[0]
+                if not isinstance(serviceId, str):
+                    return self._sendToPipe( (WorkerCall.ERROR_STATUS, ['Cannot find service ', serviceId]) )
+
+                self._sendToPipe( (WorkerCall.SERVICE_HISTORY, self._services[serviceId].history) )
 
         return None
+
 
     def _callsInterrupter(self) -> None:
         """
@@ -337,7 +347,7 @@ class GlobalServiceManager:
     def _workerCall(self, _id: str, call: str, *args: Any) -> Optional[tuple[str, list[Any]]]:
         connection = self._workersConnections.get(_id)
         if not connection: raise NotFoundException('Connection not found.')
-        if call not in WorkerCall: raise NotFoundException('Call name not found.')
+        if call not in WorkerCall._value2member_map_: raise NotFoundException('Call name not found.')
 
         try:
             connection.send((call, args))
@@ -394,7 +404,7 @@ class GlobalServiceManager:
             callResult: Optional[tuple[str, list[int]]] = self._workerCall(serviceId, WorkerCall.SERVICES_COUNT)
             if callResult is None: continue
 
-            if callResult[0] == 'count':
+            if callResult[0] == WorkerCall.SERVICES_COUNT:
                 result[callResult[1][0]] = serviceId
 
         if not result:
@@ -411,7 +421,7 @@ class GlobalServiceManager:
         logger.debug(f'Adding to {workerId} - {result}.')
 
         if result is None: return False
-        if result[0] != 'done': return False
+        if result[0] != WorkerCall.OK_STATUS: return False
 
         # adding to the list with current worker
         self._processingServices[service.id] = workerId
@@ -492,6 +502,7 @@ class GlobalServiceManager:
         # post loading
         logger.debug(f'Starting logs handler.')
         threading.Thread(target=self._logsHandler).start()
+
 
     @afterLoad
     def kill(self) -> bool:

@@ -30,15 +30,13 @@ class PanelManager:
             return
         self._orderManager.createOrder(order)
 
-    def _getNewOrders(self) -> list[OrderData]:
+    def getNewOrders(self) -> list[OrderData]:
         """
             Gets orders starting from the last one.
             Use it to easily parsing new orders.
         """
         last_order = self._orderManager.getLastOrder()
         if not last_order: raise NoLastOrder
-        if not last_order:
-            raise NoLastOrder
 
         #WARN: This part can go to new parser service
         apiJson = self._apiService.getOrdersJsonCreatedFrom(last_order.created_timestamp)
@@ -64,8 +62,10 @@ class PanelManager:
 
         self._parserState = True
         self._getFirstOrder()
+
         while self._parserState:
-            new_orders = self._getNewOrders()
+            new_orders = self.getNewOrders()
+
             for order in new_orders:
                 self._orderManager.createOrder(order)
                 print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")

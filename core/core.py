@@ -197,7 +197,7 @@ class Core(ICore):
 
 
     @syscall
-    def addTaskToService(self, service: IService|str, function: ADB_SCRIPT_CONTRACT, *args, **kwargs) -> bool:
+    def addTaskToService(self, service: IService|str, function: ADB_SCRIPT_CONTRACT, *args, **kwargs) -> str:
         """
             Syscall for adding a task to the service by its ID.
             Create task using function, args and kwargs.
@@ -214,7 +214,7 @@ class Core(ICore):
         # check if service`s id is correct
         addingResult = bool(service.loadTask(task)) # now we have loaded service
         logger.info(f'Adding new task to service {service}. Success - {addingResult}.')
-        return addingResult
+        return task.taskId
 
 
     @syscall

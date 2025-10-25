@@ -8,8 +8,8 @@ Schema of the project architecture
 |    +     |
 |Panel mng |
 +----|-----+
-|    V     |
-|Dispatcher|  ->  Database (accounts)
+|    V     |  ->  Database (accounts), also controlling services and 
+|Dispatcher|      core via its syscalls
 +----------+
 |   Core   |  ->  Database (adb hubs, phones, services etc)
 +----------+

@@ -225,12 +225,9 @@ def main():
     #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
     core.addTaskToService(
-        '98883743344a4e5a30@3c067526', debug_functions.getScreenDump
+        '98893a363136463157@3c067526', debug_functions.getScreenDump
     )
-    core.processService('98883743344a4e5a30@3c067526')
-
-    time.sleep(1)
-    core.killService('98883743344a4e5a30@3c067526')
+    core.processService('98893a363136463157@3c067526')
 
 
     # time.sleep(60)

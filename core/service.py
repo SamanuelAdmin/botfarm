@@ -1,11 +1,14 @@
 import asyncio
+import copy
 import threading
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Callable, Any, List, Optional
 
 from core.tasks.queue import TaskQueue
 from core.tasks.task import ITask
+from meta.queue import IQueue
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
@@ -25,6 +28,10 @@ class IService(ABC):
     @property
     @abstractmethod
     def id(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def history(self) -> list: ...
 
     @property
     @abstractmethod
@@ -53,24 +60,40 @@ class IService(ABC):
     def kill(self) -> bool: ...
 
 
+
+@dataclass
+class HistoryObject:
+    taskId: str
+    result: Any | Exception
+
 class TaskHistory:
     def __init__(self):
-        self._history: List[tuple[str, bool | Exception]] = []
+        # format: taskId -> HistoryObject
+        self._history: dict[str, HistoryObject] = {}
 
-    def find(self, taskId: str) -> Optional[bool | Exception]:
-        for line in self._history:
-            if line[0] == taskId:
-                return line[1]
+    def get(self, taskId: str) -> Optional[bool | Exception]:
+        tempValue = copy.deepcopy(self._history.get(taskId, None))
+        if tempValue is not None: del self._history[taskId]
+        return tempValue
 
-        return None
+    def add(self, historyObject: HistoryObject) -> None:
+        self._history[historyObject.taskId] = historyObject
 
-    def add(self, taskId: str, result: bool | Exception) -> None:
-        self._history.append((taskId, result))
+    def getAll(self) -> List[HistoryObject]:
+        """
+            Get all history records and clear it.
+        """
+
+        result = []
+
+        for key in list(self._history.keys()):
+            result.append(self._history[key])
+            del self._history[key]
+
+        return result
 
     @property
-    def history(self) -> List[tuple[str, bool | Exception]]:
-        return self._history
-
+    def size(self) -> int: return len(self._history)
 
 
 class Service(IService):
@@ -122,6 +145,9 @@ class Service(IService):
             'adbAuto': self._adbAuto
         }
 
+    @property
+    def history(self, ) -> list[HistoryObject]:
+        return self._taskHistory.getAll()
 
     @property
     def getCurrentTask(self) -> ITask:
@@ -175,8 +201,10 @@ class Service(IService):
             self._isWorking = True
             # must block all code func (IO bound)
             taskResult = task.start()
-            self._taskHistory.add(task.taskId, taskResult)
             self._isWorking = False
+            self._taskHistory.add(
+                HistoryObject(taskId=task.taskId, result=taskResult)
+            )
 
             if self._singleTaskMode:
                 # block after every task AND EXIT ITERATOR! 1 start = 1 task

@@ -8,5 +8,6 @@ class IQueue(ABC):
     @abstractmethod
     def get(self) -> Any: ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def size(self) -> int: ...
