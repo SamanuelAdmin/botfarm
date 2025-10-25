@@ -1,6 +1,8 @@
 import datetime
 from pydantic import BaseModel
 
+from meta.enums import OrderStatus
+
 
 class OrderModel(BaseModel):
     id: int
@@ -11,3 +13,4 @@ class OrderModel(BaseModel):
     service_id: int
     service_type: str
     price: float
+    status: OrderStatus

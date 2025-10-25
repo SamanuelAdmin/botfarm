@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from meta.enums import OrderStatus
+
 
 @dataclass
 class OrderData:
@@ -12,3 +14,11 @@ class OrderData:
     service_type: str
     created_date: datetime
     created_timestamp: int
+    status: OrderStatus
+
+@dataclass
+class OrderUpdateData:
+    id: int
+    status: OrderStatus
+
+    

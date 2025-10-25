@@ -17,7 +17,6 @@ panel_manager = PanelManager(order_manager, apiKey)
 
 def test_panel_manager():
     first = panel_manager.getFirstOrder()
-    print(first)
     
     panel_manager.start()
 

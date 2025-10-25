@@ -1,9 +1,11 @@
+from dataclasses import asdict
 from db.data.order import Order
 
 from meta.schemas import OrderModel
 from repository.repository import Repository
 
 from meta.exceptions import OrderAlreadyExists
+from services.panel_manager.models import OrderData, OrderUpdateData
 
 
 class OrderManager:
@@ -19,14 +21,30 @@ class OrderManager:
             self.repository.read(Order, id)
         )
 
-    def add(self, order: OrderModel) -> None: 
+    def createOrder(self, order: OrderData) -> None: 
         if self.exists(order.id):
             raise OrderAlreadyExists("This order already exists")
 
         self.repository.create(
             Order(
-                **order.model_dump()
+                **OrderModel(
+                    **asdict(order)
+                ).model_dump()
             )
+        )
+
+    def readOrder(self, order_id: int) -> Order | None:
+        return self.repository.read(Order, order_id)
+
+    def readAllOrder(self) -> list[Order]:
+        return self.repository.readAll(Order)
+
+    def deleteOrder(self, order_id: int) -> None:
+        self.repository.delete(Order, order_id)
+
+    def updateOrder(self, order: OrderUpdateData) -> None:
+        self.repository.update(
+            Order, order.id, **asdict(order)
         )
 
     def getLastOrder(self) -> Order|None:
