@@ -65,14 +65,14 @@ def afterLoad(function: Callable) -> Callable:
 
 
 
-ADB_SCRIPT_CONTRACT = Callable[[AdbClient, AdbAutomatization, Any, Any], bool] # annotation for adbScript decorator
+ADB_SCRIPT_CONTRACT = Callable[[AdbClient, AdbAutomatization, Any, Any], Any] # annotation for adbScript decorator
 
 def adbScript(function: ADB_SCRIPT_CONTRACT) -> Callable:
     """
         ADB script standard.
 
         Format of functions:
-        def action(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs) -> bool: ...
+        def action(adbClient: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs) -> Any: ...
 
         Where:
         - adbClient: AdbClient - API to system hardware part. Let control phones via ADB and get data

@@ -13,6 +13,7 @@ from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 
 
+
 class IService(ABC):
     """
         isStarted - if iterator has been started
@@ -29,9 +30,8 @@ class IService(ABC):
     @abstractmethod
     def id(self) -> str: ...
 
-    @property
     @abstractmethod
-    def history(self) -> list: ...
+    def history(self, *args, **kwargs) -> list: ...
 
     @property
     @abstractmethod
@@ -64,14 +64,14 @@ class IService(ABC):
 @dataclass
 class HistoryObject:
     taskId: str
-    result: Any | Exception
+    result: Any
 
 class TaskHistory:
     def __init__(self):
         # format: taskId -> HistoryObject
         self._history: dict[str, HistoryObject] = {}
 
-    def get(self, taskId: str) -> Optional[bool | Exception]:
+    def get(self, taskId: str) -> Optional[Any]:
         return self._history.pop(taskId, None)
 
     def add(self, historyObject: HistoryObject) -> None:
@@ -143,8 +143,8 @@ class Service(IService):
             'adbAuto': self._adbAuto
         }
 
-    @property
-    def history(self, ) -> list[HistoryObject]:
+    def history(self, taskId: Optional[str]=None) -> list[HistoryObject]:
+        if taskId: return [self._taskHistory.get(taskId)]
         return self._taskHistory.getAll()
 
     @property

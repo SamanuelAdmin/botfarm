@@ -12,7 +12,7 @@ from queue import Empty
 
 from core.middleware import afterLoad
 from core.logger import Logger
-from core.service import IService
+from core.service import IService, HistoryObject
 from core.exceptions import *
 from meta.singleton import Singleton
 from meta.stdout import IStdout
@@ -59,7 +59,7 @@ class WorkerEvent:
     workerId: str
     type: WorkerEventTypes
     serviceId: Optional[str] = None
-    context: tuple = field(default_factory=tuple)
+    context: list = field(default_factory=list)
 
 class WorkerCall(enum.StrEnum):
     WORKER_STOP = 'stop'
@@ -151,7 +151,7 @@ class Worker:
         self._sendLog('info', text)
 
 
-    def _sendEvent(self, _type: WorkerEventTypes, serviceId: Optional[str]=None, context: Optional[tuple[Any]]=None) -> None:
+    def _sendEvent(self, _type: WorkerEventTypes, serviceId: Optional[str]=None, context: Optional[list[Any]]=None) -> None:
         """
             Send events, which will be process by events' processor.
             Format: WorkerEventTypes, [... data ...]
@@ -267,10 +267,15 @@ class Worker:
 
 
     def _killService(self, service: IService) -> None:
+        # sending event with all service history
+        self._sendEvent(
+            WorkerEventTypes.SERVICE_FINISHED, serviceId=service.id,
+            context=[h for h in service.history()]
+        )
+
         service.kill()
-        del self._services[service.id]
+        self._services.pop(service.id)
         self._sendLog('info', f'Service {service.id} killed.')
-        self._sendEvent(WorkerEventTypes.SERVICE_FINISHED, serviceId=service.id)
 
     def _addService(self, service: IService) -> None:
         self._services[service.id] = service
@@ -357,6 +362,8 @@ class GlobalServiceManager:
         # list with active services and workers which process this service
         # format:  service_id : worker_id
         self._processingServices: dict[str, str] = {}
+        # saves all history from the service
+        self._serviceHistoryBuffer: dict[str, list[HistoryObject]] = {}
 
         # workers list, to control workers wia Worker ID and workers calls
         # contains workers pipes, which are used to make workers calls
@@ -377,6 +384,14 @@ class GlobalServiceManager:
     @property
     @afterLoad
     def workersCount(self) -> int: return len(self._workersConnections)
+
+    @property
+    @afterLoad
+    def processingServices(self) -> list[str]: return list(self._processingServices.keys())
+
+    @property
+    @afterLoad
+    def servicesCount(self) -> int: return len(self.processingServices)
 
 
     @afterLoad
@@ -437,6 +452,8 @@ class GlobalServiceManager:
             case WorkerEventTypes.SERVICE_STARTED:
                 self._processingServices[event.serviceId] = event.workerId
             case WorkerEventTypes.SERVICE_FINISHED:
+                # also saving service history in buffer
+                self._serviceHistoryBuffer[event.serviceId] = event.context
                 self._processingServices.pop(event.serviceId)
 
 
@@ -527,6 +544,10 @@ class GlobalServiceManager:
             f'Successfully removed (stopped) { len(list(filter(lambda x: x, results))) } services.',
             ' [' + ' ,'.join(results) + ']' if results else ''
         )
+
+    def getServiceHistory(self, serviceId: str) -> Optional[list[HistoryObject]]:
+        # getting worker which process this service
+        self._serviceHistoryBuffer.pop(serviceId, None)
 
 
     def load(self) -> None:

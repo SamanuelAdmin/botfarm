@@ -4,6 +4,10 @@ from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 
+from core.dispatcher import Dispatcher
+from services.db_services.order_manager import OrderManager
+from services.panel_manager.manager import PanelManager
+
 load_dotenv()
 import os, sys
 
@@ -224,10 +228,15 @@ def main():
     # core.addTaskToService(
     #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
-    core.addTaskToService(
-        '98893a363136463157@3c067526', debug_functions.getScreenDump
-    )
-    core.processService('98893a363136463157@3c067526')
+    # core.addTaskToService(
+    #     '98893a363136463157@3c067526', debug_functions.getScreenDump
+    # )
+    # core.processService('98893a363136463157@3c067526')
+
+    logger.info(os.getenv('PANEL_API_KEY'))
+    panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
+    dispatcher = Dispatcher(core, panelManager)
+    dispatcher.load()
 
 
     # time.sleep(60)

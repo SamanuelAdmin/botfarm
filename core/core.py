@@ -235,3 +235,13 @@ class Core(ICore):
 
         self._GSM.remove(service)
         return True
+
+    @syscall
+    def getServiceHistory(self, service: IService|str) -> Any|None:
+        """
+            Get all results of the service`s tasks.
+            Returns all service`s history under the cover.
+            ONLY FOR FINISHED SERVICES!
+        """
+
+        return self._GSM.getServiceHistory(service.id)

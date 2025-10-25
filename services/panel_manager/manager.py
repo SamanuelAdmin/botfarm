@@ -14,11 +14,10 @@ class PanelManager:
         Panel manager - manager for all logic for getting and saving orders.
         Manage api_service and parser_service for get new orders, every 15 seconds for example.
     """
-    def __init__(self, orderManager: OrderManager, apiKey: str, parsingDelay: int = 15):
+    def __init__(self, orderManager: OrderManager, apiKey: str):
         self._parserService = PanelParserService()
         self._apiService = PanelApiService(apiKey)
         self._orderManager = orderManager
-        self._parsingDelay = parsingDelay
         self._parserState = False
 
     def _getFirstOrder(self) -> None:
@@ -47,7 +46,7 @@ class PanelManager:
     def stopParser(self) -> None:
         self._parserState = False
     
-    def startParse(self, do_not_use_in_production: bool = False) -> None:
+    def startParse(self, parsingDelay: int = 15, do_not_use_in_production: bool = False) -> None:
         """
             Test method, this functions will be in the order`s dispatcher.
             Do not use this in production because you cannot moderate order with this code.
@@ -70,6 +69,6 @@ class PanelManager:
                 self._orderManager.createOrder(order)
                 print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
 
-            time.sleep(self._parsingDelay)
+            time.sleep(parsingDelay)
 
         

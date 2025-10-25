@@ -1,7 +1,7 @@
 import requests
 import json
 
-from services.panel_manager.exceptions import PanelApiServiceError, UnknownMethodError
+from meta.exceptions import PanelApiServiceError, UnknownMethodError
 from services.panel_manager.enums import PanelApiMethods
 
 from typing import Any
@@ -18,7 +18,7 @@ class PanelApiService:
         try:
             return response.json()
         except json.JSONDecodeError as e:
-            raise PanelApiServiceError(f"Не удалось получить json из ответа. {e}")
+            raise PanelApiServiceError(f"Could not get the response. {e}")
 
     def _requestApi(
             self, method: PanelApiMethods, endpoint: str, queryParams: dict[str, Any]|None=None

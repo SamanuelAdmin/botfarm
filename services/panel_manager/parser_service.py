@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from services.panel_manager.models import OrderData
-from services.panel_manager.exceptions import ValidateJsonError
+from meta.exceptions import ValidateJsonError
 
     
 class PanelParserService:
