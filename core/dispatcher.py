@@ -18,6 +18,7 @@ logger = Logger()
 class ActiveAccount:
     accountUsername: str
     serviceId: str
+    busy: bool = False
 
 
 class Dispatcher:
@@ -56,7 +57,7 @@ class Dispatcher:
         newOrders = self._panelManager.getNewOrders()
 
 
-    def _loadService(self, serviceId: str) -> list[str]:
+    def _loadService(self, serviceId: str) -> None:
         """
             Post load for a service.
             Getting all active accounts via syscalls and adbScript.
@@ -70,10 +71,12 @@ class Dispatcher:
             data = self._core.getServiceHistory(serviceId)
             if data: break
 
+        if not isinstance(data[0].result, list):
+            logger.error(f'Got uncorrected data when getting active account from the service {serviceId}: {data[0].result}')
+            return
+
         for username in data[0].result:
             self.activeAccounts[username] = ActiveAccount(username, serviceId)
-
-        return data[0].result
 
 
     def load(self):
@@ -101,11 +104,25 @@ class Dispatcher:
 
 
     @afterLoad
-    def processOrder(self, order: OrderData):
-        if order.quantity != 34: return
+    def processOrder(self):
+        usedServices = []
 
         # making tasks for services
+        for account in self.activeAccounts.values():
+            if not account.busy:
+                account.busy = True
+                self._core.addTaskToService(
+                    account.serviceId, changeAccount, account.accountUsername
+                )
+                self._core.addTaskToService(account.serviceId, likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/')
 
+                # adding service to "processing queue"
+                if not account.serviceId in usedServices:
+                    usedServices.append(account.serviceId)
+
+        # pushing all used (loaded) services
+        for serviceId in usedServices:
+            self._core.processService(serviceId)
 
 
     def handler(self):

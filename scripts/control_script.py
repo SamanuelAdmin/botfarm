@@ -100,49 +100,44 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
     secondScreenDump = adbAuto.screenDump
     if secondScreenDump != firstScreenDump:
         # parse it again, and remove duplicates
-        activeAccounts = list({*activeAccounts, _parseAccounts(adb, adbAuto, secondScreenDump)})
+        activeAccounts = list({*activeAccounts, *_parseAccounts(adb, adbAuto, secondScreenDump)})
 
     logger.info(adb.serial, 'Gotten active accounts: ' + str(len(activeAccounts)), '. Returning...')
     for _ in range(2): _hideAccountsList(adb, adbAuto)
     return activeAccounts
 
 
-
 @adbScript
 def changeAccount(adb: AdbClient, adbAuto: AdbAutomatization, username: str) -> bool:
-    try:
-        if not _checkForProfileButton(adb, adbAuto): return False
-        _openAccountsList(adb, adbAuto)
+    if not _checkForProfileButton(adb, adbAuto): return False
+    _openAccountsList(adb, adbAuto)
 
-        def _chooseAccount(adb: AdbClient, adbAuto: AdbAutomatization, usernameButton: bs4.element.Tag) -> bool:
-            adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
+    def _chooseAccount(adb: AdbClient, adbAuto: AdbAutomatization, usernameButton: bs4.element.Tag) -> bool:
+        adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
 
-            if adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}):
-                _hideAccountsList(adb, adbAuto)
-
-
-        # checking for account
-        firstScreenDump = adbAuto.screenDump
-        usernameButton = adbAuto.getDumpElement(firstScreenDump, {'text': username})
-        if usernameButton:
-            _chooseAccount(adb, adbAuto, usernameButton)
-            return True
-
-        for _ in range(2): _scrollDownAccounts(adb, adbAuto)
-
-        secondScreenDump = adbAuto.screenDump
-        if secondScreenDump == firstScreenDump:
+        if adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}):
             _hideAccountsList(adb, adbAuto)
-            return False
 
 
-        usernameButton = adbAuto.getDumpElement(secondScreenDump, {'text': username})
-        if usernameButton:
-            _chooseAccount(adb, adbAuto, usernameButton)
-            return True
+    # checking for account
+    firstScreenDump = adbAuto.screenDump
+    usernameButton = adbAuto.getDumpElement(firstScreenDump, {'text': username})
+    if usernameButton:
+        _chooseAccount(adb, adbAuto, usernameButton)
+        return True
 
+    for _ in range(2): _scrollDownAccounts(adb, adbAuto)
+
+    secondScreenDump = adbAuto.screenDump
+    if secondScreenDump == firstScreenDump:
         _hideAccountsList(adb, adbAuto)
         return False
-    except Exception as e:
-        print(e)
-        return False
+
+
+    usernameButton = adbAuto.getDumpElement(secondScreenDump, {'text': username})
+    if usernameButton:
+        _chooseAccount(adb, adbAuto, usernameButton)
+        return True
+
+    _hideAccountsList(adb, adbAuto)
+    return False

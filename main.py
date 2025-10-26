@@ -230,21 +230,22 @@ def main():
     #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
 
-    core.addTaskToService(
-        '988dd2324533333634@3c067526', changeAccount, 'jwo.carol.uhmbau'
-    )
-    core.processService('988dd2324533333634@3c067526')
+    # core.addTaskToService(
+    #     '988dd2324533333634@3c067526', changeAccount, 'jwo.carol.uhmbau'
+    # )
+    # core.processService('988dd2324533333634@3c067526')
+    #
+    # while True:
+    #     data = core.getServiceHistory('988dd2324533333634@3c067526')
+    #
+    #     if data:
+    #         print(data)
+    #         break
 
-    while True:
-        data = core.getServiceHistory('988dd2324533333634@3c067526')
-
-        if data:
-            print(data)
-            break
-
-    # panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
-    # dispatcher = Dispatcher(core, panelManager)
-    # dispatcher.load()
+    panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
+    dispatcher = Dispatcher(core, panelManager)
+    dispatcher.load()
+    dispatcher.processOrder()
 
 
     # time.sleep(60)
