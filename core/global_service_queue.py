@@ -5,7 +5,6 @@ import threading
 import uuid
 import time
 from dataclasses import dataclass, field
-from multiprocessing.pool import worker
 from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
@@ -31,10 +30,13 @@ class WorkerStdout(IStdout):
     def __init__(self, interrupt: Callable):
         self._interrupt = interrupt
         self._baseStdout = sys.stdout
+        self._baseStderr = sys.stderr
         sys.stdout = self
+        sys.stderr = self
 
     def __del__(self):
         sys.stdout = sys.__stdout__ # restore previous stdout
+        sys.stdout = sys.__stderr__ # restore previous stdout
 
     def write(self, *args) -> None:
         formatString = ' '.join(args).replace('\n', '')
@@ -273,9 +275,11 @@ class Worker:
 
     def _killService(self, service: IService) -> None:
         # sending event with all service history
+        serviceHistory = [h for h in service.history()]
+
         self._sendEvent(
             WorkerEventTypes.SERVICE_FINISHED, serviceId=service.id,
-            context=[h for h in service.history()]
+            context=serviceHistory
         )
 
         service.kill()

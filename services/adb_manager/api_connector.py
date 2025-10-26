@@ -26,12 +26,15 @@ class ApiConnector:
         assert method.lower() in ['get', 'post', 'put', 'delete']
 
         try:
-            r = requests.request(
-                method.lower(), self._adbHubApi + url,
-                params=params, headers=headers, data=data,
-                timeout=timeout if timeout else self._timeout
-            )
+            with requests.Session() as session:
+                r = session.request(
+                    method.lower(), self._adbHubApi + url,
+                    params=params, headers=headers, data=data,
+                    timeout=timeout if timeout else self._timeout
+                )
         except requests.exceptions.Timeout: return 408
+        except requests.exceptions.ChunkedEncodingError: return 104
+        except ConnectionResetError: return 104
 
         if r.status_code != 200: return r.status_code
         try: return r.json()

@@ -9,7 +9,8 @@ logger = Logger(setDatetime=False)
 
 @adbScript
 def getScreenDump(adb: AdbClient, adbAuto: AdbAutomatization, *args, **kwargs) -> bool:
-    try: logger.debug(adb.getScreenDump())
+    try:
+        logger.debug(adb.getScreenDump())
     except Exception as e:
         logger.error(e)
 

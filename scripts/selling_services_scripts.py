@@ -59,7 +59,7 @@ def checkForAlertDialog(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -
 @adbScript
 def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     logger.debug(adb.serial, f'Opening post via link {link}')
-    openViaLink(adb, link)
+    openViaLink(adb, adbAuto, link)
 
 
     adbAuto.waitForElement(

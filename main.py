@@ -231,7 +231,7 @@ def main():
     # )
 
     # core.addTaskToService(
-    #     '988dd2324533333634@3c067526', changeAccount, 'jwo.carol.uhmbau'
+    #     '988dd2324533333634@3c067526', debug_functions.getScreenDump, 'jwo.carol.uhmbau'
     # )
     # core.processService('988dd2324533333634@3c067526')
     #

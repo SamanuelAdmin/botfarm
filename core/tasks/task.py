@@ -64,14 +64,13 @@ class Task(ITask):
         self._dataQueue = multiprocessing.Queue()
 
         def taskBody(task: ITask, queue: multiprocessing.Queue) -> None:
-            try:
+            # try:
                 taskResult = task._function(
                     *task._functionArgs, **task._functionKwargs
                 )
-
                 queue.put(taskResult)
-            except Exception as error:
-                queue.put(error)
+            # except Exception as error:
+            #     queue.put(error)
 
 
         self._task = multiprocessing.Process(target=taskBody, args=(self, self._dataQueue), daemon=True)

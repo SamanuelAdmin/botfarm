@@ -31,11 +31,11 @@ def _scrollDownAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
 
 @adbScript
 def _hideAccountsList(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
-    adbAuto.swipeInRect(
-        *adbAuto.getElementBounds(
-            adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'})
-        )
-    )
+    try:
+        accountsContainer = adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'})
+        if accountsContainer:
+            adbAuto.swipeInRect( *adbAuto.getElementBounds( accountsContainer ) )
+    except Exception: pass
 
 
 @adbScript
