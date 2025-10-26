@@ -25,7 +25,6 @@ def parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list
     accountsSection: Optional[bs4.element.Tag] = adbAuto.getDumpElement(
         dump, {'resource-id': "com.instagram.android:id/recycler_view_container_id"}
     )
-    print(dump)
     accountsSection = accountsSection.node if accountsSection else None
 
     if not accountsSection:
@@ -50,7 +49,7 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
     activeAccounts: list[str] = []
 
     if not adbAuto.getDumpElement(
-        adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'}
+            adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'}
     ):
         logger.error(adb.serial, 'Cannot find profile button. Aborting...')
         return []
@@ -69,7 +68,7 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
     # swiping for some more new accounts
     for _ in range(2):
         adbAuto.swipeInRect(
-        *adbAuto.getElementBounds(
+            *adbAuto.getElementBounds(
                 adbAuto.getDumpElement(
                     adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}
                 )
@@ -79,9 +78,8 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
     secondScreenDump = adbAuto.screenDump
     if secondScreenDump != firstScreenDump:
         # parse it again
-        for acc in parseAccounts(secondScreenDump): activeAccounts.append(acc)
+        for acc in parseAccounts(adb, adbAuto, secondScreenDump): activeAccounts.append(acc)
 
     logger.info(adb.serial, 'Gotten active accounts: ' + str(len(activeAccounts)), '. Returning...')
     for _ in range(2): adb.tap(Dot(300, 100).make_random())
-
     return activeAccounts

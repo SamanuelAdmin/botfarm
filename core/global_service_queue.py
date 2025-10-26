@@ -5,6 +5,7 @@ import threading
 import uuid
 import time
 from dataclasses import dataclass, field
+from multiprocessing.pool import worker
 from typing import Any, Optional, Callable
 import multiprocessing
 from multiprocessing.connection import Connection
@@ -50,6 +51,8 @@ class WorkerStatus(enum.IntEnum):
     ERROR_STATUS = 1
 
 class WorkerEventTypes(enum.StrEnum):
+    WORKER_STARTED = 'worker_started'
+    WORKER_STOPPED = 'worker_stopped'
     SERVICE_STARTED = "service_started"
     SERVICE_FINISHED = "service_finished"
     SERVICE_ERROR = "service_error"
@@ -159,7 +162,8 @@ class Worker:
         """
 
         try:
-            self._eventsPipe.put(
+            # ALERT! Can raise queue.Full!!!
+            self._eventsPipe.put_nowait(
                 WorkerEvent( workerId=self._id, type=_type, serviceId=serviceId, context=context )
             )
         except (BrokenPipeError, OSError) as error: pass
@@ -291,8 +295,9 @@ class Worker:
         def checkIfServiceStarted(service: IService) -> bool:
             return any([service.isStarted, service.isWorking])
 
-
         self._sendLog('debug', 'Worker (iterator) started.')
+        self._sendEvent(WorkerEventTypes.WORKER_STARTED, context=['Worker started.'])
+
         while self._isAlive:
             time.sleep(self._iteratorDelay)
 
@@ -329,8 +334,10 @@ class Worker:
         self._customStdout = WorkerStdout(self._sendCaughtLog)
 
         self._isAlive = True
-        self._iterator()
-
+        try: self._iterator()
+        except:
+            self._sendEvent(WorkerEventTypes.WORKER_STOPPED, context=['Worker`s iterator stopped.'])
+            self._del()
 
 
 
@@ -371,6 +378,13 @@ class GlobalServiceManager:
         self._workersConnections: dict[str, Connection] = {}
         self._workersLogsConnections: dict[str, Connection] = {}
         self._workersEventsQueue: multiprocessing.Queue = multiprocessing.Queue() # faster and safer as raw Pipes
+        # started workers, contains already started and working worker's ids
+        # use it in post load to wait for all workers
+        self._startedWorkers: list[str] = []
+        # you need to fill it only once - after workers creation
+        self._workersLoadTable: dict[str, int] = {} # table for getting worker`s loading fast and secure
+
+        self._globalGSMLock: threading.Lock = threading.Lock()
 
         # table with all workers processes
         # use it to save and terminate processes
@@ -396,7 +410,7 @@ class GlobalServiceManager:
 
 
     @afterLoad
-    def _workerCall(self, _id: str, call: str, *args: Any) -> Optional[tuple[str, list[Any]]]:
+    def _workerCall(self, _id: str, call: str, *args: Any) -> Optional[tuple[int, list[Any]]]:
         connection = self._workersConnections.get(_id)
         if not connection: raise NotFoundException('Connection not found.')
         if call not in WorkerCall._value2member_map_: raise NotFoundException('Call name not found.')
@@ -405,13 +419,16 @@ class GlobalServiceManager:
             connection.send((call, args))
 
             # receiving data
-            if not connection.poll(timeout=1): raise BrokenPipeError
+            if not connection.poll(timeout=5):
+                logger.warning(f'Worker {_id} did not respond to {call} within 1s')
+                raise BrokenPipeError
             fb, data = connection.recv()
 
-            if fb:
+            if fb == WorkerStatus.OK_STATUS:
                 logger.debug(f'Successfully worker call. ID: {_id}, Call: {call}, Args count: {len(args)}.')
                 return fb, data
-        except (BrokenPipeError, OSError, EOFError, ValueError): pass
+        except (BrokenPipeError, OSError, EOFError, ValueError) as error:
+            logger.error(f'{_id} did not respond to {call} - finished with error: {error}')
         return None
 
 
@@ -449,18 +466,27 @@ class GlobalServiceManager:
             This function must be fast as hell.
         """
 
-
-        match event.type:
-            case WorkerEventTypes.SERVICE_STARTED:
-                self._processingServices[event.serviceId] = event.workerId
-            case WorkerEventTypes.SERVICE_FINISHED:
-                # also saving service history in buffer
-                self._serviceHistoryBuffer[event.serviceId] = event.context
-                self._processingServices.pop(event.serviceId)
+        with self._globalGSMLock:
+            match event.type:
+                case WorkerEventTypes.WORKER_STOPPED:
+                    process = self._workersProcesses.pop(event.workerId, None)
+                    if process: process.terminate()
+                case WorkerEventTypes.WORKER_STARTED:
+                    self._startedWorkers.append(event.workerId)
+                    # adding to the loading table
+                    self._workersLoadTable[event.workerId] = 0
+                case WorkerEventTypes.SERVICE_STARTED:
+                    self._processingServices[event.serviceId] = event.workerId
+                case WorkerEventTypes.SERVICE_FINISHED:
+                    # also saving service history in buffer
+                    self._serviceHistoryBuffer[event.serviceId] = event.context
+                    self._processingServices.pop(event.serviceId, None)
+                    # and removing it from the load table
+                    self._workersLoadTable[event.workerId] -= 1 if self._workersLoadTable[event.workerId] > 0 else 0
 
 
     @afterLoad
-    def _eventsProcessor(self, eventsBufferSize: int=10) -> None:
+    def _eventsProcessor(self) -> None:
         """
             Catch and process every worker`s event.
         """
@@ -484,31 +510,28 @@ class GlobalServiceManager:
             And then return id of the less loaded worker.
             Returns ID of the worker.
         """
-        # getting services count
-        result: dict[int, str] = {} # format: count_of_services - worker id
 
-        for serviceId, serviceConnection in self._workersConnections.items():
-            callResult: Optional[tuple[str, list[int]]] = self._workerCall(serviceId, WorkerCall.SERVICES_COUNT)
-            if callResult is None: continue
+        if len(self._workersLoadTable.keys()) < 1:
+            logger.error('No alive workers found in the load table. Cannot get less loaded worker.')
+            raise NotFoundException('No alive workers found in the load table.')
 
-            if callResult[0] == WorkerCall.SERVICES_COUNT:
-                result[callResult[1][0]] = serviceId
-
-        if not result:
-            logger.error('No alive workers found. Cannot get less loaded worker.')
-            raise NotFoundException('No alive workers found.')
-
-        return result[min(result)]
+        return min(self._workersLoadTable, key=self._workersLoadTable.get)
 
 
+    @afterLoad
     def _loadService(self, service: IService) -> bool:
-        workerId = self._getLessLoadedWorker()
+        with self._globalGSMLock:
+            workerId = self._getLessLoadedWorker()
+            self._workersLoadTable[workerId] += 1
+
         logger.debug(f'Adding new service to {workerId}...')
         result: Optional[tuple[str, Any]] = self._workerCall(workerId, WorkerCall.SERVICE_ADD, service)
         logger.debug(f'Adding to {workerId} - {result}.')
 
-        if result is None: return False
-        if result[0] != WorkerStatus.OK_STATUS: return False
+        if result is None or result[0] != WorkerStatus.OK_STATUS:
+            with self._globalGSMLock:
+                self._workersLoadTable[workerId] -= 1 if self._workersLoadTable[workerId] > 0 else 0
+            return False
 
         return True
 
@@ -566,6 +589,7 @@ class GlobalServiceManager:
             logger.critical('Cannot load GSM! MAX_UNITS cannot be less then 1.')
             raise UnableToDo('Cannot start workers - self._max_units cannot be less then 1.')
 
+
         for _ in range(self._max_units):
             worker = Worker()
 
@@ -580,11 +604,14 @@ class GlobalServiceManager:
 
             # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
             workerProcess = self._context.Process(
-                target=worker.start, args=(controlChildPipe, self._workersEventsQueue, logsChildPipe), name=f"{worker.workerPrefix}_{worker.id}"
+                target=worker.start,
+                args=(controlChildPipe, self._workersEventsQueue, logsChildPipe),
+                name=f"{worker.workerPrefix}_{worker.id}"
             )
             self._workersProcesses[worker.id] = workerProcess
             workerProcess.start()
             logger.debug(f'Starting worker {worker.id}...')
+
 
         logger.info('Global service manager started.')
         self._isLoaded = True
@@ -595,6 +622,12 @@ class GlobalServiceManager:
         logger.debug(f'Starting events processor.')
         threading.Thread(target=self._eventsProcessor, daemon=True, name="GSM-EventProcessor").start()
 
+        # waiting for all workers to avoid "pipe has not been loaded yet" problems
+        # and to don't lose data (like services which you need to add)
+        logger.debug(f'Waiting for {len(self._workersProcesses.keys())} workers to start.')
+        while len(self._workersProcesses.keys()) != len(self._startedWorkers):
+            time.sleep(self._logsHandlerDelay)
+
 
     @afterLoad
     def kill(self) -> bool:
@@ -602,10 +635,13 @@ class GlobalServiceManager:
             Hard kill the workers. Terminate all processes.
             Use it only in "hard" situation.
         """
-        logger.debug(f'Terminating (hard kill) all workers ({len(self._workersProcesses)})...')
-        for process in list(self._workersProcesses.values()):
-            process.terminate()
+        with self._globalGSMLock:
+            logger.debug(f'Terminating (hard kill) all workers ({len(self._workersProcesses)})...')
+            for process in list(self._workersProcesses.values()):
+                process.terminate()
 
-        logger.debug(f'Killed all workers - {len(self._workersConnections)} units. Closing GSM.')
-        self._isAlive = False
+            logger.debug(f'Killed all workers - {len(self._workersConnections)} units. Closing GSM.')
+            self._isAlive = False
+            self._isLoaded = False
+
         return True

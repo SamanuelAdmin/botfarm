@@ -1,4 +1,5 @@
-import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -67,6 +68,9 @@ class Dispatcher:
             data = self._core.getServiceHistory(serviceId)
             if data: break
 
+        for username in data[0].result:
+            self.activeAccounts[username] = ActiveAccount(username, serviceId)
+
         return data[0].result
 
 
@@ -79,11 +83,15 @@ class Dispatcher:
         logger.info('loading dispatcher...')
         startTime = datetime.now()
 
-        for serviceId in self._core.servicesTable:
-            print(self._loadService(serviceId))
-            break
+        with ThreadPoolExecutor() as executor:
+            threads = [
+                executor.submit(self._loadService, serviceId) \
+                for serviceId in self._core.servicesTable
+            ]
+            wait(threads)
 
         self._isLoaded = True
+        logger.info(f'Collected {len(self.activeAccounts)} (active) accounts.')
         logger.info(f'Dispatcher loaded in {(datetime.now() - startTime).total_seconds()} seconds.')
 
 
