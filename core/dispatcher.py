@@ -1,4 +1,5 @@
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,6 +9,7 @@ from core.middleware import afterLoad
 from core.service import HistoryObject
 from services.panel_manager.manager import PanelManager
 from scripts.control_script import *
+from scripts.selling_services_scripts import *
 
 
 logger = Logger()
@@ -83,17 +85,23 @@ class Dispatcher:
         logger.info('loading dispatcher...')
         startTime = datetime.now()
 
-        with ThreadPoolExecutor() as executor:
-            threads = [
-                executor.submit(self._loadService, serviceId) \
-                for serviceId in self._core.servicesTable
-            ]
-            wait(threads)
+        threads = [
+            threading.Thread(target=self._loadService, args=(serviceId, )) \
+            for serviceId in self._core.servicesTable
+        ]
+
+        logger.info('Starting all threads to process services...')
+        for thread in threads: thread.start()
+        time.sleep(5) # small delay to start all threads
+        for thread in threads: thread.join()
 
         self._isLoaded = True
         logger.info(f'Collected {len(self.activeAccounts)} (active) accounts.')
         logger.info(f'Dispatcher loaded in {(datetime.now() - startTime).total_seconds()} seconds.')
 
 
-
-
+    def handler(self):
+        while True:
+            for order in self._panelManager.getNewOrders():
+                # making tasks
+                pass

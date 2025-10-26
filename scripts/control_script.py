@@ -6,7 +6,6 @@
 """
 import random
 from typing import Optional
-
 import bs4
 
 from core.logger import Logger
@@ -19,7 +18,49 @@ logger = Logger(setDatetime=False)
 
 
 @adbScript
-def parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list[str]:
+def _scrollDownAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
+    for _ in range(2):
+        adbAuto.swipeInRect(
+            *adbAuto.getElementBounds(
+                adbAuto.getDumpElement(
+                    adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}
+                )
+            ), direction=False
+        )
+
+
+@adbScript
+def _hideAccountsList(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
+    adbAuto.swipeInRect(
+        *adbAuto.getElementBounds(
+            adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'})
+        )
+    )
+
+
+@adbScript
+def _checkForProfileButton(adb: AdbClient, adbAuto: AdbAutomatization) -> bool:
+    if adbAuto.getDumpElement(
+            adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'}
+    ): return True
+
+    logger.error(adb.serial, 'Cannot find profile button. Aborting...')
+    return False
+
+
+@adbScript
+def _openAccountsList(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
+    adbAuto.clickInRect(
+        *adbAuto.getElementBounds(
+            adbAuto.getDumpElement( adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'} )
+        ), clickDuration=random.randint(2, 3)
+    )
+
+    adbAuto.waitForElement({'resource-id': 'com.instagram.android:id/recycler_view_container_id'})
+
+
+@adbScript
+def _parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list[str]:
     activeAccounts = []
 
     accountsSection: Optional[bs4.element.Tag] = adbAuto.getDumpElement(
@@ -40,7 +81,6 @@ def parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list
                 activeAccounts.append(activeAccount)
         except (AttributeError, ValueError): continue
 
-
     return activeAccounts
 
 
@@ -48,38 +88,50 @@ def parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> list
 def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]:
     activeAccounts: list[str] = []
 
-    if not adbAuto.getDumpElement(
-            adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'}
-    ):
-        logger.error(adb.serial, 'Cannot find profile button. Aborting...')
-        return []
-
-    adbAuto.clickInRect(
-        *adbAuto.getElementBounds(
-            adbAuto.getDumpElement( adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/profile_tab'} )
-        ), clickDuration=random.randint(2, 3)
-    )
-
-    adbAuto.waitForElement({'resource-id': 'com.instagram.android:id/recycler_view_container_id'})
+    if not _checkForProfileButton(adb, adbAuto): return []
+    _openAccountsList(adb, adbAuto)
 
     firstScreenDump = adbAuto.screenDump
-    for acc in parseAccounts(adb, adbAuto, firstScreenDump): activeAccounts.append(acc)
+    for acc in _parseAccounts(adb, adbAuto, firstScreenDump): activeAccounts.append(acc)
 
     # swiping for some more new accounts
-    for _ in range(2):
-        adbAuto.swipeInRect(
-            *adbAuto.getElementBounds(
-                adbAuto.getDumpElement(
-                    adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}
-                )
-            ), direction=False
-        )
+    for _ in range(2): _scrollDownAccounts(adb, adbAuto)
 
     secondScreenDump = adbAuto.screenDump
     if secondScreenDump != firstScreenDump:
-        # parse it again
-        for acc in parseAccounts(adb, adbAuto, secondScreenDump): activeAccounts.append(acc)
+        # parse it again, and remove duplicates
+        activeAccounts = list({*activeAccounts, _parseAccounts(adb, adbAuto, secondScreenDump)})
 
     logger.info(adb.serial, 'Gotten active accounts: ' + str(len(activeAccounts)), '. Returning...')
-    for _ in range(2): adb.tap(Dot(300, 100).make_random())
+    for _ in range(2): _hideAccountsList(adb, adbAuto)
     return activeAccounts
+
+
+
+@adbScript
+def changeAccount(adb: AdbClient, adbAuto: AdbAutomatization, username: str) -> bool:
+    if not _checkForProfileButton(adb, adbAuto): return False
+    _openAccountsList(adb, adbAuto)
+
+    # checking for account
+    firstScreenDump = adbAuto.screenDump
+    usernameButton = adbAuto.getDumpElement(firstScreenDump, {'text': username})
+    if usernameButton:
+        adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
+        return True
+
+    for _ in range(2): _scrollDownAccounts(adb, adbAuto)
+
+    secondScreenDump = adbAuto.screenDump
+    if secondScreenDump == firstScreenDump:
+        _hideAccountsList(adb, adbAuto)
+        return False
+
+
+    usernameButton = adbAuto.getDumpElement(secondScreenDump, {'text': username})
+    if usernameButton:
+        adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
+        return True
+
+    _hideAccountsList(adb, adbAuto)
+    return False

@@ -20,6 +20,7 @@ from scripts import debug_functions
 from scripts.login_script import loginScript
 from scripts.selling_services_scripts import *
 from scripts.edit_profile_info import editProfileInfoScript
+from scripts.control_script import changeAccount
 
 
 # some temp configs
@@ -228,14 +229,15 @@ def main():
     # core.addTaskToService(
     #     '988e9034574a4d5831@3c067526', likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/',
     # )
-    # core.addTaskToService(
-    #     '98893a363136463157@3c067526', debug_functions.getScreenDump
-    # )
-    # core.processService('98893a363136463157@3c067526')
 
-    panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
-    dispatcher = Dispatcher(core, panelManager)
-    dispatcher.load()
+    core.addTaskToService(
+        '98893a363136463157@3c067526', changeAccount, 'methomasbrowns58244'
+    )
+    core.processService('98893a363136463157@3c067526')
+
+    # panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
+    # dispatcher = Dispatcher(core, panelManager)
+    # dispatcher.load()
 
 
     # time.sleep(60)
