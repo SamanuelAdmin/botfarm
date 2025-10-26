@@ -110,28 +110,39 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
 
 @adbScript
 def changeAccount(adb: AdbClient, adbAuto: AdbAutomatization, username: str) -> bool:
-    if not _checkForProfileButton(adb, adbAuto): return False
-    _openAccountsList(adb, adbAuto)
+    try:
+        if not _checkForProfileButton(adb, adbAuto): return False
+        _openAccountsList(adb, adbAuto)
 
-    # checking for account
-    firstScreenDump = adbAuto.screenDump
-    usernameButton = adbAuto.getDumpElement(firstScreenDump, {'text': username})
-    if usernameButton:
-        adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
-        return True
+        def _chooseAccount(adb: AdbClient, adbAuto: AdbAutomatization, usernameButton: bs4.element.Tag) -> bool:
+            adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
 
-    for _ in range(2): _scrollDownAccounts(adb, adbAuto)
+            if adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}):
+                _hideAccountsList(adb, adbAuto)
 
-    secondScreenDump = adbAuto.screenDump
-    if secondScreenDump == firstScreenDump:
+
+        # checking for account
+        firstScreenDump = adbAuto.screenDump
+        usernameButton = adbAuto.getDumpElement(firstScreenDump, {'text': username})
+        if usernameButton:
+            _chooseAccount(adb, adbAuto, usernameButton)
+            return True
+
+        for _ in range(2): _scrollDownAccounts(adb, adbAuto)
+
+        secondScreenDump = adbAuto.screenDump
+        if secondScreenDump == firstScreenDump:
+            _hideAccountsList(adb, adbAuto)
+            return False
+
+
+        usernameButton = adbAuto.getDumpElement(secondScreenDump, {'text': username})
+        if usernameButton:
+            _chooseAccount(adb, adbAuto, usernameButton)
+            return True
+
         _hideAccountsList(adb, adbAuto)
         return False
-
-
-    usernameButton = adbAuto.getDumpElement(secondScreenDump, {'text': username})
-    if usernameButton:
-        adbAuto.clickInRect( *adbAuto.getElementBounds(usernameButton) )
-        return True
-
-    _hideAccountsList(adb, adbAuto)
-    return False
+    except Exception as e:
+        print(e)
+        return False

@@ -10,7 +10,7 @@ from core.service import HistoryObject
 from services.panel_manager.manager import PanelManager
 from scripts.control_script import *
 from scripts.selling_services_scripts import *
-
+from services.panel_manager.models import OrderData
 
 logger = Logger()
 
@@ -98,6 +98,14 @@ class Dispatcher:
         self._isLoaded = True
         logger.info(f'Collected {len(self.activeAccounts)} (active) accounts.')
         logger.info(f'Dispatcher loaded in {(datetime.now() - startTime).total_seconds()} seconds.')
+
+
+    @afterLoad
+    def processOrder(self, order: OrderData):
+        if order.quantity != 34: return
+
+        # making tasks for services
+
 
 
     def handler(self):

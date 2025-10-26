@@ -231,9 +231,16 @@ def main():
     # )
 
     core.addTaskToService(
-        '98893a363136463157@3c067526', changeAccount, 'methomasbrowns58244'
+        '988dd2324533333634@3c067526', changeAccount, 'jwo.carol.uhmbau'
     )
-    core.processService('98893a363136463157@3c067526')
+    core.processService('988dd2324533333634@3c067526')
+
+    while True:
+        data = core.getServiceHistory('988dd2324533333634@3c067526')
+
+        if data:
+            print(data)
+            break
 
     # panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
     # dispatcher = Dispatcher(core, panelManager)
