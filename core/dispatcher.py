@@ -114,7 +114,7 @@ class Dispatcher:
                 self._core.addTaskToService(
                     account.serviceId, changeAccount, account.accountUsername
                 )
-                self._core.addTaskToService(account.serviceId, likePost, 'https://www.instagram.com/p/DN5LWYJjNhq/')
+                self._core.addTaskToService(account.serviceId, followAccount, 'https://www.instagram.com/psptm5/')
 
                 # adding service to "processing queue"
                 if not account.serviceId in usedServices:

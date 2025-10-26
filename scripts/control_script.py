@@ -5,14 +5,14 @@
 
 """
 import random
+import time
 from typing import Optional
 import bs4
 
 from core.logger import Logger
 from core.middleware import adbScript
 from services.adb_manager import AdbClient, Dot
-from services.adb_manager.adb_auto import AdbAutomatization
-
+from services.adb_manager.adb_auto import AdbAutomatization, PostActions
 
 logger = Logger(setDatetime=False)
 
@@ -108,6 +108,38 @@ def parseActiveAccounts(adb: AdbClient, adbAuto: AdbAutomatization) -> list[str]
 
 
 @adbScript
+def hideAllNotifications(adb: AdbClient, adbAuto: AdbAutomatization) -> None:
+    screenDump = adbAuto.screenDump
+    elements = [
+        'com.instagram.android:id/profile_tab',
+        "Want us to show you ads that are more relevant by using your activity from ad partners?"
+    ]
+
+    while True:
+        for element in elements:
+            if element in screenDump: break
+        else:
+            screenDump = adbAuto.screenDump
+            time.sleep(1)
+            continue
+
+        break
+
+    time.sleep(2)
+
+    adsField = adbAuto.getDumpElement(
+            adbAuto.screenDump, {"content-desc": "Want us to show you ads that are more relevant by using your activity from ad partners?"}
+    )
+
+    if adsField:
+        adbAuto.waitForElement(
+            {'content-desc': "Use this activity"},
+            postActions=( PostActions.clickOnElement, )
+        )
+
+
+
+@adbScript
 def changeAccount(adb: AdbClient, adbAuto: AdbAutomatization, username: str) -> bool:
     if not _checkForProfileButton(adb, adbAuto): return False
     _openAccountsList(adb, adbAuto)
@@ -117,6 +149,8 @@ def changeAccount(adb: AdbClient, adbAuto: AdbAutomatization, username: str) -> 
 
         if adbAuto.getDumpElement(adbAuto.screenDump, {'resource-id': 'com.instagram.android:id/recycler_view_container_id'}):
             _hideAccountsList(adb, adbAuto)
+
+        hideAllNotifications(adb, adbAuto)
 
 
     # checking for account

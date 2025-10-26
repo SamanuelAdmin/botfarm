@@ -20,7 +20,7 @@ from scripts import debug_functions
 from scripts.login_script import loginScript
 from scripts.selling_services_scripts import *
 from scripts.edit_profile_info import editProfileInfoScript
-from scripts.control_script import changeAccount
+from scripts.control_script import *
 
 
 # some temp configs
@@ -231,12 +231,12 @@ def main():
     # )
 
     # core.addTaskToService(
-    #     '988dd2324533333634@3c067526', debug_functions.getScreenDump, 'jwo.carol.uhmbau'
+    #     '9889aa335356334a34@3c067526', hideAllNotifications, # 'jwo.carol.uhmbau'
     # )
-    # core.processService('988dd2324533333634@3c067526')
+    # core.processService('9889aa335356334a34@3c067526')
     #
     # while True:
-    #     data = core.getServiceHistory('988dd2324533333634@3c067526')
+    #     data = core.getServiceHistory('9889aa335356334a34@3c067526')
     #
     #     if data:
     #         print(data)

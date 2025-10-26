@@ -80,7 +80,7 @@ def likePost(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
 @adbScript
 def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool:
     logger.debug(adb.serial, f'Opening profile via link {link}')
-    openViaLink(adb, link)
+    openViaLink(adb, adbAuto, link)
 
     adbAuto.waitForElement(
         {'resource-id': 'com.instagram.android:id/profile_header_user_action_follow_button'},
@@ -92,7 +92,6 @@ def followAccount(adb: AdbClient, adbAuto: AdbAutomatization, link: str) -> bool
         adbAuto.screenDump,
         {'resource-id': 'com.instagram.android:id/profile_header_follow_button'}
     )
-    logger.debug(adb.serial, followButtonSoup)
 
     if followButtonSoup['text'] != 'Follow':
         logger.warning(adb.serial, 'Account is already following.')
