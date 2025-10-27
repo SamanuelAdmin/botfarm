@@ -406,7 +406,9 @@ class GlobalServiceManager:
 
     @property
     @afterLoad
-    def processingServices(self) -> list[str]: return list(self._processingServices.keys())
+    def processingServices(self) -> list[str]:
+        """ Returns services id of  """
+        return list(self._processingServices.keys())
 
     @property
     @afterLoad

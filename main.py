@@ -245,7 +245,7 @@ def main():
     panelManager = PanelManager(OrderManager(), os.getenv('PANEL_API_KEY'))
     dispatcher = Dispatcher(core, panelManager)
     dispatcher.load()
-    dispatcher.processOrder()
+    dispatcher.handler()
 
 
     # time.sleep(60)

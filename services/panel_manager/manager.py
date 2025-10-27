@@ -63,7 +63,7 @@ class PanelManager:
         self._getFirstOrder()
 
         while self._parserState:
-            new_orders = self.getNewOrders()
+            new_orders: list[OrderData] = self.getNewOrders()
 
             for order in new_orders:
                 self._orderManager.createOrder(order)

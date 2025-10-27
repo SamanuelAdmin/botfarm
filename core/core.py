@@ -197,7 +197,7 @@ class Core(ICore):
 
 
     @syscall
-    def addTaskToService(self, service: IService|str, function: ADB_SCRIPT_CONTRACT, *args, **kwargs) -> str:
+    def addServiceTask(self, service: IService | str, function: ADB_SCRIPT_CONTRACT, *args, **kwargs) -> str:
         """
             Syscall for adding a task to the service by its ID.
             Create task using function, args and kwargs.
@@ -237,7 +237,7 @@ class Core(ICore):
         return True
 
     @syscall
-    def getServiceHistory(self, service: IService|str) -> Any|None:
+    def serviceHistory(self, service: IService | str) -> Any | None:
         """
             Get all results of the service`s tasks.
             Returns all service`s history under the cover.
@@ -245,3 +245,10 @@ class Core(ICore):
         """
 
         return self._GSM.getServiceHistory(service)
+
+    @syscall
+    def getLoads(self):
+        """
+            Get service id of all services which are processing now.
+        """
+        return self._GSM.processingServices

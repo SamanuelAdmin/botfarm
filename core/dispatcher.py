@@ -1,16 +1,19 @@
+import copy
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from core.core import Core
-from core.middleware import afterLoad
+from core.middleware import afterLoad, ADB_SCRIPT_CONTRACT
 from core.service import HistoryObject
 from services.panel_manager.manager import PanelManager
 from scripts.control_script import *
 from scripts.selling_services_scripts import *
 from services.panel_manager.models import OrderData
+
+
 
 logger = Logger()
 
@@ -19,6 +22,7 @@ class ActiveAccount:
     accountUsername: str
     serviceId: str
     busy: bool = False
+    taskId: Optional[str] = None
 
 
 class Dispatcher:
@@ -35,48 +39,63 @@ class Dispatcher:
         And use if for orders
     """
 
-    def __init__(self, core: Core,  panelManager: PanelManager):
-        self._core = core
-        self._panelManager = panelManager
+    def __init__(self, core: Core, panelManager: PanelManager, orderProcessorDelay: int=1):
+        self._core: Core = core
+        self._panelManager: PanelManager = panelManager
 
-        self._isLoaded = False
-        self.activeAccounts: dict[str, ActiveAccount] = {}
+        self._orderProcessorDelay: int = orderProcessorDelay
+        self._isLoaded: bool = False
+
+        self._crspServiceAccount: dict[str, list[ActiveAccount]] = {} # correspondence table (service_id -> list of active accounts)
+        self._globalDispatcherLock = threading.Lock()
+        self._processingOrders: list[OrderData] = []
+        # services which are processing or which need to give their history (won't be touched be orderProcessor)
+        self._blockedServices: list[str] = []
+
+        # all selling scripts will be here in format SERVICE_ID : ADB_SCRIPT
+        self._sellingScripts: dict[int, ADB_SCRIPT_CONTRACT] = {}
 
 
     @property
     def isLoaded(self) -> bool: return self._isLoaded
 
+    @property
+    def activeAccountsCount(self) -> int:
+        return sum([len(al) for al in self._crspServiceAccount.values()])
+
+
+
+    def _freeAccount(self, account: ActiveAccount) -> None:
+        with self._globalDispatcherLock:
+            account.busy = False
+            account.taskId = None
+
 
     @afterLoad
-    def update(self):
-        """
-            Update function for orders.
-            Getting new orders via manager.
-        """
-
-        newOrders = self._panelManager.getNewOrders()
-
-
     def _loadService(self, serviceId: str) -> None:
         """
             Post load for a service.
             Getting all active accounts via syscalls and adbScript.
         """
 
-        self._core.addTaskToService(serviceId, parseActiveAccounts)
+        self._core.addServiceTask(serviceId, parseActiveAccounts)
         self._core.processService(serviceId)
         data: Optional[list[HistoryObject]]
 
         while True:
-            data = self._core.getServiceHistory(serviceId)
+            time.sleep(0.1)
+            data = self._core.serviceHistory(serviceId)
             if data: break
 
         if not isinstance(data[0].result, list):
             logger.error(f'Got uncorrected data when getting active account from the service {serviceId}: {data[0].result}')
             return
 
-        for username in data[0].result:
-            self.activeAccounts[username] = ActiveAccount(username, serviceId)
+        self._crspServiceAccount[serviceId] = [
+            ActiveAccount(
+                accountUsername=username, serviceId=serviceId, busy=False
+            ) for username in data[0].result
+        ]
 
 
     def load(self):
@@ -95,38 +114,144 @@ class Dispatcher:
 
         logger.info('Starting all threads to process services...')
         for thread in threads: thread.start()
-        time.sleep(5) # small delay to start all threads
+        time.sleep(self._orderProcessorDelay) # small delay to start all threads
         for thread in threads: thread.join()
 
         self._isLoaded = True
-        logger.info(f'Collected {len(self.activeAccounts)} (active) accounts.')
+        logger.info(f'Collected {self.activeAccountsCount} (active) accounts.')
         logger.info(f'Dispatcher loaded in {(datetime.now() - startTime).total_seconds()} seconds.')
 
 
     @afterLoad
-    def processOrder(self):
-        usedServices = []
+    def _processOrder(self, order: OrderData, adbFunc: ADB_SCRIPT_CONTRACT, *adbFuncArgs, **adbFuncKwargs) -> bool:
+        """
+            Makes all order "magic". Added new tasks to free accounts,
+            pushing loaded services etc.
+            Quantity - count of the "operations"
+            adbFunc, adbFuncArgs and adbFuncKwargs - context and algorithm
+            which you need to do [Quantity] times.
+        """
+        totalQuantity = copy.copy(order.quantity)
+        with self._globalDispatcherLock:
+            self._processingOrders.append(order)
 
-        # making tasks for services
-        for account in self.activeAccounts.values():
-            if not account.busy:
-                account.busy = True
-                self._core.addTaskToService(
-                    account.serviceId, changeAccount, account.accountUsername
-                )
-                self._core.addTaskToService(account.serviceId, followAccount, 'https://www.instagram.com/psptm5/')
+        usedAccounts: list[ActiveAccount] = [] # all successfully processed accounts (all unsuccessful will be removed)
+        # to make search actions by task id O(1) using hashmaps
+        usedAccountSearcher: dict[str, ActiveAccount] = {} # taskId : ActiveAccount
+        # DO NOT DELETE SERVICES FROM THIS LIST
+        usedServices: list[str] = [] # services which we used (and don't need to touch anymore)
 
-                # adding service to "processing queue"
-                if not account.serviceId in usedServices:
-                    usedServices.append(account.serviceId)
 
-        # pushing all used (loaded) services
-        for serviceId in usedServices:
+        def loadAndPush(serviceId: str, username: str) -> str:
+            """ adding tasks and push loaded service to GSM """
+            self._core.addServiceTask(serviceId, changeAccount, username)
+            accountTaskId = self._core.addServiceTask(serviceId, adbFunc, *adbFuncArgs, **adbFuncKwargs)
             self._core.processService(serviceId)
 
+            return accountTaskId
 
+        try:
+            # looking for free services to complete the order quickly
+            # and also collect data from processed services
+            while totalQuantity > 0:
+                time.sleep(self._orderProcessorDelay)
+
+                # checking for free services
+                for serviceId in self._core.servicesTable:
+                    currentCoreLoads: list[str] = self._core.getLoads()
+                    # ignore if already processing all order
+                    if len(usedAccounts) >= order.quantity: break
+
+                    with self._globalDispatcherLock:
+                        # skip if service is busy
+                        if serviceId in currentCoreLoads: continue
+                        if serviceId in self._blockedServices: continue
+                        if serviceId in usedServices: continue
+
+                    for account in self._crspServiceAccount[serviceId]:
+                        if account.busy: continue
+                        if len(usedAccounts) >= order.quantity: break
+
+                        with self._globalDispatcherLock:
+                            self._blockedServices.append(serviceId)
+
+                        account.busy = True
+                        taskId = loadAndPush(serviceId, account.accountUsername)
+                        account.taskId = taskId
+
+                        usedServices.append(serviceId)
+                        usedAccounts.append(account)
+                        usedAccountSearcher[taskId] = account
+
+
+                # getting data from the services
+                for serviceId in usedServices:
+                    # getting service`s history
+                    data: Optional[list[HistoryObject]] = self._core.serviceHistory(serviceId)
+                    if not data: continue
+
+                    # free the service
+                    with self._globalDispatcherLock:
+                        if serviceId in self._blockedServices:
+                            self._blockedServices.remove(serviceId)
+
+                    for ho in data:
+                        account = usedAccountSearcher.pop(ho.taskId, None)
+                        # skip if task id not found
+                        if not account: continue
+                        self._freeAccount(account)
+
+                        # deleting account from "successful list" if result is incorrect
+                        if ho.result is True: totalQuantity -= 1
+                        else:
+                            logger.warning(f'<Order {order.id}> Gotten incorrect task result: {ho}')
+                            usedAccounts.remove(account)
+
+        except Exception as e:
+            logger.error(f'<Order {order.id}> Error in order processor`s iterator: {e}')
+
+        with self._globalDispatcherLock:
+            self._processingOrders.remove(order)
+
+            # if "while" has been interrupted, free all services
+            for serviceId in usedServices:
+                if not serviceId in self._blockedServices: continue
+                self._blockedServices.remove(serviceId)
+
+        logger.info(f'<Order {order.id}> Order successfully completed.')
+        return True
+
+
+    @afterLoad
+    def _manageOrder(self, order: OrderData):
+        """
+            Order preprocess function.
+            Need to collect all data, change statuses, log etc.
+            Start all process order in new thread.
+        """
+
+        # if we don`t need to process this order
+        if order.service_id not in list(self._sellingScripts.keys()): return
+
+        # you can use pure threads because orders won`t be completed if all farm is busy (IO-BOUND only tasks)
+        threading.Thread(
+            target=self._processOrder,
+            args=(order, self._sellingScripts[order.service_id], order.link),
+        ).start()
+
+        logger.info(
+            f'Order {order.id} accepted. ' +
+            '( ${order.price} - {order.quantity} of {order.service_id} for {order.link} )'
+        )
+
+
+    @afterLoad
     def handler(self):
         while True:
-            for order in self._panelManager.getNewOrders():
+            newOrders: list[OrderData] = self._panelManager.getNewOrders()
+
+            for order in newOrders:
                 # making tasks
-                pass
+                self._manageOrder(order)
+
+            time.sleep(self._orderProcessorDelay * 5)
