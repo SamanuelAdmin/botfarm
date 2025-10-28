@@ -4,7 +4,7 @@ import json
 from meta.exceptions import PanelApiServiceError, UnknownMethodError
 from services.panel_manager.enums import PanelApiMethods
 
-from typing import Any
+from typing import Any, Optional
 
 
 class PanelApiService:
@@ -48,14 +48,17 @@ class PanelApiService:
         res = self._requestApi(PanelApiMethods.GET, '')
         return self._getJson(res)
 
-    def getOrdersJsonCreatedFrom(self, createdFrom: float) -> dict:
+    def getOrdersJsonCreatedFrom(self, createdFrom: Optional[float]) -> dict:
         """
             Order creation UNIX timestamp (lower bound).
             Sorting: "sort": "date-asc"
         """
-        res = self._requestApi(
-            PanelApiMethods.GET, '', {'created_from': createdFrom, 'sort': 'date-asc'}
-        )
+        queryParams: dict[str, Any] = {
+            'sort': 'date-asc'
+        }
+
+        if createdFrom: queryParams['created_from'] = createdFrom
+        res = self._requestApi( PanelApiMethods.GET, '', queryParams )
         return self._getJson(res)
 
     def getSortedOrders(self) -> dict:

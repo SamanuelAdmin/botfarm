@@ -53,7 +53,10 @@ class Dispatcher:
         self._blockedServices: list[str] = []
 
         # all selling scripts will be here in format SERVICE_ID : ADB_SCRIPT
-        self._sellingScripts: dict[int, ADB_SCRIPT_CONTRACT] = {}
+        self._sellingScripts: dict[int, ADB_SCRIPT_CONTRACT] = {
+            9216: likePost,
+            9217: followAccount
+        }
 
 
     @property
@@ -71,7 +74,6 @@ class Dispatcher:
             account.taskId = None
 
 
-    @afterLoad
     def _loadService(self, serviceId: str) -> None:
         """
             Post load for a service.
@@ -114,7 +116,7 @@ class Dispatcher:
 
         logger.info('Starting all threads to process services...')
         for thread in threads: thread.start()
-        time.sleep(self._orderProcessorDelay) # small delay to start all threads
+        time.sleep(self._orderProcessorDelay * 5) # small delay to start all threads
         for thread in threads: thread.join()
 
         self._isLoaded = True
@@ -142,13 +144,11 @@ class Dispatcher:
         usedServices: list[str] = [] # services which we used (and don't need to touch anymore)
 
 
-        def loadAndPush(serviceId: str, username: str) -> str:
+        def loadServiceTask(serviceId: str, username: str) -> str:
             """ adding tasks and push loaded service to GSM """
             self._core.addServiceTask(serviceId, changeAccount, username)
-            accountTaskId = self._core.addServiceTask(serviceId, adbFunc, *adbFuncArgs, **adbFuncKwargs)
-            self._core.processService(serviceId)
+            return self._core.addServiceTask(serviceId, adbFunc, *adbFuncArgs, **adbFuncKwargs)
 
-            return accountTaskId
 
         try:
             # looking for free services to complete the order quickly
@@ -158,7 +158,9 @@ class Dispatcher:
 
                 # checking for free services
                 for serviceId in self._core.servicesTable:
-                    currentCoreLoads: list[str] = self._core.getLoads()
+                    with self._globalDispatcherLock:
+                        currentCoreLoads: list[str] = self._core.getLoads(serviceId)
+
                     # ignore if already processing all order
                     if len(usedAccounts) >= order.quantity: break
 
@@ -169,29 +171,34 @@ class Dispatcher:
                         if serviceId in usedServices: continue
 
                     for account in self._crspServiceAccount[serviceId]:
-                        if account.busy: continue
+                        with self._globalDispatcherLock:
+                            if account.busy: continue
+
                         if len(usedAccounts) >= order.quantity: break
 
                         with self._globalDispatcherLock:
                             self._blockedServices.append(serviceId)
 
-                        account.busy = True
-                        taskId = loadAndPush(serviceId, account.accountUsername)
-                        account.taskId = taskId
+                            account.busy = True
+                            taskId = loadServiceTask(serviceId, account.accountUsername)
+                            account.taskId = taskId
 
-                        usedServices.append(serviceId)
                         usedAccounts.append(account)
                         usedAccountSearcher[taskId] = account
+
+                    self._core.processService(serviceId) # push loaded service
+                    usedServices.append(serviceId)
+                    logger.debug(f'Using new service {serviceId} for {order.id}')
 
 
                 # getting data from the services
                 for serviceId in usedServices:
                     # getting service`s history
-                    data: Optional[list[HistoryObject]] = self._core.serviceHistory(serviceId)
-                    if not data: continue
-
-                    # free the service
                     with self._globalDispatcherLock:
+                        data: Optional[list[HistoryObject]] = self._core.serviceHistory(serviceId)
+                        if not data: continue
+
+                        # free the service
                         if serviceId in self._blockedServices:
                             self._blockedServices.remove(serviceId)
 
@@ -201,24 +208,27 @@ class Dispatcher:
                         if not account: continue
                         self._freeAccount(account)
 
-                        # deleting account from "successful list" if result is incorrect
-                        if ho.result is True: totalQuantity -= 1
+                        if ho.result is True:
+                            totalQuantity -= 1
+                            logger.debug(f'Successful used account {account.accountUsername} with {serviceId} for {order.id} order.')
                         else:
+                            # deleting account from "successful list" if result is incorrect
                             logger.warning(f'<Order {order.id}> Gotten incorrect task result: {ho}')
                             usedAccounts.remove(account)
 
         except Exception as e:
             logger.error(f'<Order {order.id}> Error in order processor`s iterator: {e}')
+        else:
+            logger.info(f'<Order {order.id}> Order successfully completed.')
+        finally:
+            with self._globalDispatcherLock:
+                self._processingOrders.remove(order)
 
-        with self._globalDispatcherLock:
-            self._processingOrders.remove(order)
+                # if "while" has been interrupted, free all services
+                for serviceId in usedServices:
+                    if not serviceId in self._blockedServices: continue
+                    self._blockedServices.remove(serviceId)
 
-            # if "while" has been interrupted, free all services
-            for serviceId in usedServices:
-                if not serviceId in self._blockedServices: continue
-                self._blockedServices.remove(serviceId)
-
-        logger.info(f'<Order {order.id}> Order successfully completed.')
         return True
 
 
@@ -233,6 +243,8 @@ class Dispatcher:
         # if we don`t need to process this order
         if order.service_id not in list(self._sellingScripts.keys()): return
 
+        self._panelManager.saveOrder(order)
+
         # you can use pure threads because orders won`t be completed if all farm is busy (IO-BOUND only tasks)
         threading.Thread(
             target=self._processOrder,
@@ -241,12 +253,17 @@ class Dispatcher:
 
         logger.info(
             f'Order {order.id} accepted. ' +
-            '( ${order.price} - {order.quantity} of {order.service_id} for {order.link} )'
+            f'( ${order.price} - {order.quantity} of {order.service_id} for {order.link} )'
         )
 
 
     @afterLoad
     def handler(self):
+        logger.info('Orders handler started.')
+
+        # base order, use it to handle all orders after this one
+        self._panelManager.getFirstOrder()
+
         while True:
             newOrders: list[OrderData] = self._panelManager.getNewOrders()
 

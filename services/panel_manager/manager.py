@@ -20,7 +20,7 @@ class PanelManager:
         self._orderManager = orderManager
         self._parserState = False
 
-    def _getFirstOrder(self) -> None:
+    def getFirstOrder(self) -> None:
         api_json = self._apiService.getSortedOrders()
         orders_list = self._parserService.parseOrdersJson(api_json)
 
@@ -45,6 +45,10 @@ class PanelManager:
 
     def stopParser(self) -> None:
         self._parserState = False
+
+    def saveOrder(self, order: OrderData) -> None:
+        self._orderManager.createOrder(order)
+
     
     def startParse(self, parsingDelay: int = 15, do_not_use_in_production: bool = False) -> None:
         """
@@ -60,13 +64,13 @@ class PanelManager:
             raise Exception('For tests only! Do not use in production!')
 
         self._parserState = True
-        self._getFirstOrder()
+        self.getFirstOrder()
 
         while self._parserState:
             new_orders: list[OrderData] = self.getNewOrders()
 
             for order in new_orders:
-                self._orderManager.createOrder(order)
+                self.saveOrder(order)
                 print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
 
             time.sleep(parsingDelay)

@@ -2,11 +2,11 @@ from enum import StrEnum
 
 
 class OrderStatus(StrEnum):
-    pending: str = 'pending'
-    in_progress: str = 'in_progress'
-    proccessing: str = 'proccessing'
-    completed: str = 'completed'
-    partial: str = 'partial'
-    canceled: str = 'canceled'
-    error: str = 'error'
-    fail: str = 'fail'
+    pending = 'pending'
+    in_progress = 'in_progress'
+    proccessing = 'proccessing'
+    completed = 'completed'
+    partial = 'partial'
+    canceled = 'canceled'
+    error = 'error'
+    fail = 'fail'

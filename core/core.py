@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, Any
@@ -224,6 +225,8 @@ class Core(ICore):
         """
 
         self._GSM.add(service)
+        # cleaning current service obj to avoid tasks duplication
+        service.deleteAllTasks()
         return True
 
 
@@ -247,7 +250,7 @@ class Core(ICore):
         return self._GSM.getServiceHistory(service)
 
     @syscall
-    def getLoads(self):
+    def getLoads(self, service: IService | str) -> list[str]:
         """
             Get service id of all services which are processing now.
         """
