@@ -22,6 +22,7 @@ class Checker(ABC):
         """ Unnecessary method, if you need more initialization arguments or attributes. """
         pass
 
+
     @classmethod
     @abstractmethod
     def check(self, adb: AdbClient) -> bool:
@@ -32,6 +33,7 @@ class Checker(ABC):
         """
         pass
 
+
     def checkable(self, function: Callable) -> Callable:
         """
             Decorator to make functions "checkable".
@@ -41,7 +43,7 @@ class Checker(ABC):
         @wraps(function)
         def wrapper(*args, **kwargs) -> Any:
             checkingResult = self.check(self.adb)
-            if not checkingResult: return
+            if not checkingResult: return None
 
             return function(*args, **kwargs)
 

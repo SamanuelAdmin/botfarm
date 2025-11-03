@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from core.tasks.queue import TaskQueue
 from core.tasks.task import ITask
 from core.hardware import AdbClient
-from core.hardware import AdbAutomatization
+from core.hardware.adb_auto import AdbAutomatization
 
 
 

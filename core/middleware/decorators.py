@@ -6,7 +6,7 @@ from typing import Callable, Any
 
 from core.meta.exceptions import NotFoundException, CoreIsNotStarted, NotLoaded
 from core.hardware import AdbClient
-from core.hardware import AdbAutomatization
+from core.hardware.adb_auto import AdbAutomatization
 
 
 

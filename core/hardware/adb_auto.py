@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 import json
 
-from core.hardware import AdbClient, Dot
+from .manager import AdbClient, Dot
 
 
 

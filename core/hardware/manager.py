@@ -5,11 +5,12 @@ import time
 import json
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, Any
+from typing import Optional
 
+from .exceptions import *
 from core.logger import Logger
 from core.hardware.api_connector import ApiConnector
-from core.hardware.meta.dot import Dot
+from core.hardware.dot import Dot
 
 
 logger = Logger()
@@ -51,6 +52,7 @@ class AdbClient:
             self._adbClient = adbClient
 
             # check if clipper installed and start it
+            from core.hardware.exceptions import IncorrectStatusException
             try:
                 self._adbClient.sendAdbCommand( 'am startservice ca.zgrs.clipper/.ClipboardService' )
                 self._clipperStatus = True
@@ -129,6 +131,7 @@ class AdbClient:
                 f'input swipe {dotStart} {dotFinish} {swipeTime}'
             )
         )
+
 
     def text(self, message: str, delayMicros: tuple[int]=(40, 90)) -> bool:
         """ Not optimized realization for text inputting. """
