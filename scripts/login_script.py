@@ -14,8 +14,8 @@ from typing import Optional
 from core.logger import Logger
 from core.middleware.decorators import adbScript
 from core.middleware.decorators import ADB_SCRIPT_CONTRACT
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization, PostActions
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization, PostActions
 from services.fa2 import get2FACode
 
 

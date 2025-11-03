@@ -8,9 +8,8 @@ from functools import wraps
 from typing import Optional, Any
 
 from core.logger import Logger
-from services.adb_manager.api_connector import ApiConnector
-from services.adb_manager.exceptions import *
-from services.adb_manager.meta.dot import Dot
+from core.hardware.api_connector import ApiConnector
+from core.hardware.meta.dot import Dot
 
 
 logger = Logger()
@@ -97,7 +96,7 @@ class AdbClient:
 
     def sendAdbCommand(self, command: str, daemon: bool=False, timeout: Optional[float]=None) -> dict[str, Any]:
         """
-            Sending adb command, from "command" attribute.
+            Sending hardware command, from "command" attribute.
             Daemon - start command as a daemon thread (if true).
             Timeout - optional timeout for the server`s response (for long commands).
         """

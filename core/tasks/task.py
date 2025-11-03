@@ -7,8 +7,8 @@ import uuid
 
 from core.meta.exceptions import TaskAlreadyStarted, TaskNotStarted
 from core.middleware.decorators import ADB_SCRIPT_CONTRACT
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization
 
 
 class ITask(ABC):

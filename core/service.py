@@ -1,17 +1,13 @@
-import asyncio
-import copy
 import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Any, List, Optional
+from typing import Any, List, Optional
 
 from core.tasks.queue import TaskQueue
 from core.tasks.task import ITask
-from meta.queue import IQueue
-from scripts.login_script import taskTable
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization
 
 
 
@@ -178,7 +174,7 @@ class Service(IService):
 
     def loadTask(self, task: ITask) -> int:
         '''
-            Process task, adding service`s adb api (adbClient)
+            Process task, adding service`s hardware api (adbClient)
             and add task to queue.
             Returns loaded tasks cound.
         '''

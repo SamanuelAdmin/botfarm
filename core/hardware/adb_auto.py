@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 import json
 
-from services.adb_manager import AdbClient, Dot
+from core.hardware import AdbClient, Dot
 
 
 
@@ -43,10 +43,10 @@ def postAction(function: POST_ACTION_CONTRACT):
 
 class AdbAutomatization(_AdbAutomatizationInterface):
     """
-        Automatization for simple adb processes, works via ADB (adb client)
+        Automatization for simple hardware processes, works via ADB (hardware client)
         AdbClient wrapper - for more functionality
         Isolated, each only for one client
-        Parser, randomizer (for delays) and adb controller in one class
+        Parser, randomizer (for delays) and hardware controller in one class
     """
 
     def __init__(self, adbClient: AdbClient, parsingMethod: str='lxml'):

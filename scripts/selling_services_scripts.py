@@ -1,7 +1,7 @@
 from core.logger import Logger
 from core.middleware.decorators import adbScript
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization, PostActions
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization, PostActions
 
 
 logger = Logger(setDatetime=False)
@@ -142,7 +142,7 @@ def commentPost(adb: AdbClient, adbAuto: AdbAutomatization, link: str, comment: 
         {'resource-id': 'com.instagram.android:id/layout_comment_thread_edittext'},
         postActions=( PostActions.clickOnElement, )
     )
-    # adb.fastText(comment)
+    # hardware.fastText(comment)
     adb.bufferProcessor.copy(comment)
     adb.bufferProcessor.paste()
 

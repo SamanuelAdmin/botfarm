@@ -1,6 +1,6 @@
 from core.middleware.decorators import adbScript
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization
 
 
 

@@ -1,7 +1,7 @@
 from typing import Tuple
 import json
 
-from services.adb_manager import AdbClient, Dot
+from core.hardware import AdbClient, Dot
 from services.ai_manager.parsers import ScreenDumpParser
 from services.ai_manager import AiManager, ToolDataScheme
 

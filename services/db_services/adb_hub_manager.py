@@ -6,7 +6,7 @@ from meta.exceptions import AdbHubNotFound, AdbHubAlreadyExists
 
 class AdbHubManager:
     """
-        All functions to get/add/update adb hub info in database.
+        All functions to get/add/update hardware hub info in database.
         Must-have layer between core/main program and repository.
     """
 

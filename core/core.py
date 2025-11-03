@@ -10,8 +10,8 @@ from core.tasks.task import ITask, Task
 from core.middleware.decorators import *
 from meta import singleton
 from meta.singleton import Singleton
-from services.adb_manager import AdbClient, AdbManager
-from services.adb_manager.exceptions import IncorrectStatusCodeException
+from core.hardware import AdbClient, AdbManager
+from core.hardware.exceptions import IncorrectStatusCodeException
 from services.db_services import accounts_manager, adb_hub_manager
 
 
@@ -44,7 +44,7 @@ class Core(ICore):
         value: IService`s class obj
 
         Hub table - table with all hubs controllers (AdbManagers)
-        mapping for all adb hubs (adb managers)
+        mapping for all hardware hubs (hardware managers)
         (key) hub_uuid : AdbManager
     """
 
@@ -89,18 +89,18 @@ class Core(ICore):
     def _createServices(self, hubUUID: str) -> int:
         adbHubManager = self._hubs.get(hubUUID)
         if not adbHubManager:
-            logger.error(f'Cannot find adb hub in HUB TABLE by UUID: {hubUUID}.')
-            raise AdbManagerNotFound(f'Cannot find AdbManager (adb hub) #{hubUUID} in HUBD TABLE.')
+            logger.error(f'Cannot find hardware hub in HUB TABLE by UUID: {hubUUID}.')
+            raise AdbManagerNotFound(f'Cannot find AdbManager (hardware hub) #{hubUUID} in HUBD TABLE.')
 
         adbHubManager.loadAllSerials()
-        logger.info(f'{hubUUID} Loaded all adb clients. Creating services...')
+        logger.info(f'{hubUUID} Loaded all hardware clients. Creating services...')
 
         allLoadedClients: dict[str, AdbClient] = adbHubManager.getAllLoadedSerials()
 
         for serial, adbClient in allLoadedClients.items():
             serviceId = f'{serial}@{hubUUID}'
 
-            # adding adb API to service
+            # adding hardware API to service
             newService = Service(
                 _id=serviceId, adbClient=adbClient
             )
@@ -108,7 +108,7 @@ class Core(ICore):
             self._services[serviceId] = newService
 
         newServicesCount = len(allLoadedClients.keys())
-        logger.info(f'{hubUUID} Loaded all ({newServicesCount}) adb clients.')
+        logger.info(f'{hubUUID} Loaded all ({newServicesCount}) hardware clients.')
 
         return newServicesCount
 
@@ -121,7 +121,7 @@ class Core(ICore):
             if hubUUID is None:
                 raise IncorrectStatusCodeException(404, adbManager.api)
         except IncorrectStatusCodeException:
-            logger.error(f'Cannot get UUID of adb hub. Skipped.')
+            logger.error(f'Cannot get UUID of hardware hub. Skipped.')
             return False
 
 

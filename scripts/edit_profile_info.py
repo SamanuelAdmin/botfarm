@@ -2,8 +2,8 @@ import time
 
 from core.logger import Logger
 from core.middleware.decorators import adbScript
-from services.adb_manager import AdbClient
-from services.adb_manager.adb_auto import AdbAutomatization, PostActions
+from core.hardware import AdbClient
+from core.hardware import AdbAutomatization, PostActions
 
 logger = Logger()
 
@@ -127,7 +127,7 @@ def setNewUsername(adb: AdbClient, adbAuto: AdbAutomatization, username: str= ""
     adb.fastText(username)
 
     logger.debug(adb, 'Done, saving new username...')
-    # saveChanges(adb, adbAuto)
+    # saveChanges(hardware, adbAuto)
     adbAuto.waitForElement(
         {'resource-id': 'com.instagram.android:id/action_bar_button_action'},
         postActions=(PostActions.clickOnElement,)

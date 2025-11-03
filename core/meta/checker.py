@@ -2,10 +2,17 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Callable, Any
 
-from services.adb_manager import AdbClient
+from core.hardware import AdbClient
 
 
 class Checker(ABC):
+    """
+        Abstract class for all checkers.
+        To create your own checker you need to import this interface
+        and make check function and init method, if you need it.
+        This method will be processed after object initialization.
+    """
+
     def __init__(self, adb: AdbClient):
         self.adb: AdbClient = adb
         self.init()
@@ -20,7 +27,7 @@ class Checker(ABC):
     def check(self, adb: AdbClient) -> bool:
         """
             Checking function, used in "checkable" decorator.
-            :param adb: adb client like a context for make a check.
+            :param adb: hardware client like a context for make a check.
             :return: True or False - checking result.
         """
         pass
@@ -41,6 +48,9 @@ class Checker(ABC):
         return wrapper
 
 
+
 class BaseChecker(Checker):
-    def __init__(self, adb: AdbClient):
-        self.adb = adb
+    """ Base and empty checker """
+
+    def init(self): pass
+    def check(self, adb: AdbClient) -> bool: pass
