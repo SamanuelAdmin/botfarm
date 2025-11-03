@@ -1,11 +1,10 @@
 """
     DECORATORS AND MIDDLEWARE (LOGIC)
 """
-import copy
 from functools import wraps
 from typing import Callable, Any
 
-from core.exceptions import NotFoundException, CoreIsNotStarted, NotLoaded
+from core.meta.exceptions import NotFoundException, CoreIsNotStarted, NotLoaded
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 

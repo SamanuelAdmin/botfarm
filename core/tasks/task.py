@@ -5,8 +5,8 @@ import time
 from typing import Callable, Any, Optional
 import uuid
 
-from core.exceptions import TaskAlreadyStarted, TaskNotStarted
-from core.middleware import ADB_SCRIPT_CONTRACT
+from core.meta.exceptions import TaskAlreadyStarted, TaskNotStarted
+from core.middleware.decorators import ADB_SCRIPT_CONTRACT
 from services.adb_manager import AdbClient
 from services.adb_manager.adb_auto import AdbAutomatization
 

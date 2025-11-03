@@ -1,12 +1,12 @@
 import json
 import os
-from typing import Optional, Any
+from typing import Optional
 
 from meta.singleton import Singleton
-from core.exceptions import IncorrectConfigsFormat, CoreIsNotInitialized
-from core.core_configurator import CoreConfigurator
+from core.meta.exceptions import IncorrectConfigsFormat, CoreIsNotInitialized
+from core.meta.core_configurator import CoreConfigurator
 from core.logger import Logger
-from core.core import ICore, Core
+from core.core import Core
 
 
 logger = Logger()

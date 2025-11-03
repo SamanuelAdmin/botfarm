@@ -8,9 +8,9 @@ from functools import wraps
 from typing import Optional, Any
 
 from core.logger import Logger
-from .api_connector import ApiConnector
-from .exceptions import *
-from .meta.dot import Dot
+from services.adb_manager.api_connector import ApiConnector
+from services.adb_manager.exceptions import *
+from services.adb_manager.meta.dot import Dot
 
 
 logger = Logger()
@@ -148,7 +148,7 @@ class AdbClient:
     def getScreenDump(self) -> str:
         """ Get screen dump in xml format. """
         resp = self.sendAdbCommand(
-            f'uiautomator dump /dev/tty'
+            f'uiautomator dump /dev/tty', timeout=100
         )
         xmlData = resp.get('result')
 
