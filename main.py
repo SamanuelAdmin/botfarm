@@ -95,7 +95,7 @@ def main():
         'jhs.deborah.0e9v3t', 'On5aRcdQRu', 'P4NELDX6RAZPBTQ6FI6NO7RFCSF6F7ZF'
     ]:
         core.addServiceTask('988d5e424834365a33', loginScript, *acc)
-    core.processService('988d5e424834365a33')
+    # core.processService('988d5e424834365a33')
 
     for acc in [
         'utn.evans.xb6pfp', '6DXhrhjWBH28N4dC', 'QS2OUYQMWE5C3LVD6DHHFWLHADJ7W7TH',
@@ -110,7 +110,7 @@ def main():
         'macarol76727', 'lfzJeJN', 'NMW7XE2XU6VACSTQV3VPWDH35IT4JQYM',
     ]:
         core.addServiceTask('ce10171ac064981705', loginScript, *acc)
-    core.processService('ce10171ac064981705')
+    # core.processService('ce10171ac064981705')
 
     for acc in [
         '2306maryiwc.286', 'ZqWyfZGB', 'LNHYFLNZ5LTAO3SP62NPBJWXDDCKF3YH',
@@ -125,7 +125,7 @@ def main():
         'dcx.jackson.0ra1gs', 'uhvRZ4SUkDrlmj', 'XG4PVTP4L3AMO363UOR5HTUZWZAOR4UB',
     ]:
         core.addServiceTask('ce021712ab4f351805', loginScript, *acc)
-    core.processService('ce021712ab4f351805')
+    # core.processService('ce021712ab4f351805')
 
     for acc in [
         'michael.andersonsj35546', 'qe8pnr04wH0Qw', 'IDEL3DENOYMDWKAK3AQVRNQ74SFNDNIR',
@@ -140,14 +140,14 @@ def main():
         'ms_kimberly0315771', 'xwpVV4D', '4ZXVL4LS743JW4W5VPIULN5BZZWLFQRW',
     ]:
         core.addServiceTask('9887b636324a544e5a', loginScript, *acc)
-    core.processService('9887b636324a544e5a')
+    # core.processService('9887b636324a544e5a')
 
     for acc in [
         'ms.carol.wright996078', 'TgIXkkaxf', 'NUTETSVFS5PAMTPREUUUAW4XYY2JB6LM',
         'drkevin.perezs593079', 'm1S7JLj6bCdpP19', 'PI4N4MSWE7AFEV5QNQCOKHCUEC23FITX',
     ]:
         core.addServiceTask('9887e933364e4c5534', loginScript, *acc)
-    core.processService('9887e933364e4c5534')
+    # core.processService('9887e933364e4c5534')
 
     for acc in [
         'drkenneth.y67321', 'JgMvCY2WmR', 'CUA3XH2EZV3ZBH7SWO42O6HKZW2IVUAG',
@@ -162,7 +162,7 @@ def main():
         'dr.joseph.youngs9482987', 'sNMGzPB8RvI90y', 'G3KFSMIODAB5P2AEL62XKOZEEJFC2L3M',
     ]:
         core.addServiceTask('9887bc465035504945', loginScript, *acc)
-    core.processService('9887bc465035504945')
+    # core.processService('9887bc465035504945')
 
     # time.sleep(60)
     # core.stop()
