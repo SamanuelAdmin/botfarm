@@ -1,39 +1,41 @@
 import os
 import random
 import shlex
-import time
 import json
-from collections.abc import Callable
-from functools import wraps
-from typing import Optional
 
 from .exceptions import *
 from core.logger import Logger
 from core.hardware.api_connector import ApiConnector
 from core.hardware.dot import Dot
+from core.middleware.checker import *
+
 
 
 logger = Logger()
+
 
 class AdbClient:
     """
         "API" for low-level (hardware) phone controlling.
     """
+    _checker: Checker
 
     def __init__(
             self, connector: ApiConnector,
-            serial: str, deviceLinkPattern: str='/device/{}'
+            serial: str, deviceLinkPattern: str='/device/{}',
+            checker: Optional[type(Checker)] = None,
     ):
         self.serial = serial
         self.connector = connector
         self.deviceLink = deviceLinkPattern.format(serial)
         # phone`s clipboard API, can be used from "outside"
         self._bufferProcessor = None
+        self._checker = checker(self) if checker else BaseChecker(self)
 
 
     @property
     def bufferProcessor(self):
-        """ Added because buffer is an option. Also, it needs time to make a request when initing """
+        """ Added because buffer is an option. Also, it needs time to make a request when initialization """
 
         if self._bufferProcessor is None:
             logger.info(self.serial, 'Initializing buffer processor...')
@@ -52,7 +54,6 @@ class AdbClient:
             self._adbClient = adbClient
 
             # check if clipper installed and start it
-            from core.hardware.exceptions import IncorrectStatusException
             try:
                 self._adbClient.sendAdbCommand( 'am startservice ca.zgrs.clipper/.ClipboardService' )
                 self._clipperStatus = True
@@ -115,14 +116,17 @@ class AdbClient:
 
         return response
 
+    @_checker.checkable
     def tap(self, dot: Dot) -> bool:
         """ Click on the screen. """
+
         return bool(
             self.sendAdbCommand(
                 f'input tap {dot.x} {dot.y}'
             )
         )
 
+    @_checker.checkable
     def swipe(self, dotStart: Dot, dotFinish: Dot, timeK: float=0.02, swipeTime: Optional[int]=None) -> bool:
         # swipe time in seconds (CANNOT BE FLOAT (IDK WHY))
         swipeTime = swipeTime * 1000 if swipeTime else int((dotFinish - dotStart) * timeK)
@@ -133,6 +137,7 @@ class AdbClient:
         )
 
 
+    @_checker.checkable
     def text(self, message: str, delayMicros: tuple[int]=(40, 90)) -> bool:
         """ Not optimized realization for text inputting. """
         for letter in message:
@@ -180,6 +185,7 @@ class AdbClient:
             raise FileDownloadException(fullPath)
 
 
+    @_checker.checkable
     def fastText(self, message: str, delay: tuple[int, int]=(0.01, 0.07)) -> bool:
         """
             Optimized realization for text inputting.
@@ -203,9 +209,11 @@ class AdbClient:
         return bool( self.sendAdbCommand(cmd, timeout=1*len(safe_message)) )
 
 
+    @_checker.checkable
     def _deleteLetter(self) -> bool:
         return bool(self.sendAdbCommand(f'input keyevent KEYCODE_DEL'))
 
+    @_checker.checkable
     def deleteText(self, length: int=1, fast: bool=False, sec: float=0.5) -> bool:
         """ Deleting all text from the text field (by length in slow mode and using sec attribute in fast mode). """
         # going to the end of the text
@@ -227,11 +235,12 @@ class AdbClient:
 
 # ADB HUB API
 class Manager:
-    def __init__(self, api: str, timeout: float=2):
+    def __init__(self, api: str, timeout: float=2, checker: Optional[type(Checker)] = None) -> None:
         self.api = api
         self._timeout = timeout
         self.apiConnector = ApiConnector(api, timeout=self._timeout)
         self._adbClients: dict[str, AdbClient] = {}
+        self._checker = checker
 
     # ADB HUB INFO
     def getUUID(self) -> str|None:
@@ -259,12 +268,12 @@ class Manager:
         serials = self.getAllSerials()
 
         for serial in serials:
-            self._adbClients[serial] = AdbClient(self.apiConnector, serial)
+            self.loadSerial(serial)
 
 
     # CREATE AND READ FOR 1 CLIENT
     def loadSerial(self, serial: str) -> AdbClient:
-        adbClient = AdbClient(self.apiConnector, serial)
+        adbClient = AdbClient(self.apiConnector, serial, checker=self._checker)
         self._adbClients[serial] = adbClient
         return adbClient
 
