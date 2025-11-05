@@ -2,12 +2,15 @@ import os
 import random
 import shlex
 import json
+import time
+from functools import wraps
+from typing import Optional, Callable
 
 from .exceptions import *
 from core.logger import Logger
 from core.hardware.api_connector import ApiConnector
 from core.hardware.dot import Dot
-from core.middleware.checker import *
+from core.middleware.adb_checker import AdbChecker, BaseAdbChecker, adbCheckable
 
 
 
@@ -18,19 +21,25 @@ class AdbClient:
     """
         "API" for low-level (hardware) phone controlling.
     """
-    _checker: Checker
+
+    _checker: AdbChecker
 
     def __init__(
             self, connector: ApiConnector,
             serial: str, deviceLinkPattern: str='/device/{}',
-            checker: Optional[type(Checker)] = None,
+            checker: Optional[type(AdbChecker)] = None,
     ):
         self.serial = serial
         self.connector = connector
         self.deviceLink = deviceLinkPattern.format(serial)
         # phone`s clipboard API, can be used from "outside"
         self._bufferProcessor = None
-        self._checker = checker(self) if checker else BaseChecker(self)
+        self._checker = checker(self) if checker else BaseAdbChecker(self)
+
+    @property
+    def checker(self):
+        # READ-ONLY!
+        return self._checker
 
 
     @property
@@ -61,7 +70,7 @@ class AdbClient:
                 logger.error(f'{self._adbClient.serial} Cannot start clipboard service (clipper).')
                 self._clipperStatus = False
 
-
+        @staticmethod
         def clipperRequired(function: Callable):
             """
                 Checks if clipped has been installed and started.
@@ -116,7 +125,7 @@ class AdbClient:
 
         return response
 
-    @_checker.checkable
+    @adbCheckable
     def tap(self, dot: Dot) -> bool:
         """ Click on the screen. """
 
@@ -126,7 +135,7 @@ class AdbClient:
             )
         )
 
-    @_checker.checkable
+    @adbCheckable
     def swipe(self, dotStart: Dot, dotFinish: Dot, timeK: float=0.02, swipeTime: Optional[int]=None) -> bool:
         # swipe time in seconds (CANNOT BE FLOAT (IDK WHY))
         swipeTime = swipeTime * 1000 if swipeTime else int((dotFinish - dotStart) * timeK)
@@ -137,7 +146,7 @@ class AdbClient:
         )
 
 
-    @_checker.checkable
+    @adbCheckable
     def text(self, message: str, delayMicros: tuple[int]=(40, 90)) -> bool:
         """ Not optimized realization for text inputting. """
         for letter in message:
@@ -185,7 +194,7 @@ class AdbClient:
             raise FileDownloadException(fullPath)
 
 
-    @_checker.checkable
+    @adbCheckable
     def fastText(self, message: str, delay: tuple[int, int]=(0.01, 0.07)) -> bool:
         """
             Optimized realization for text inputting.
@@ -209,11 +218,11 @@ class AdbClient:
         return bool( self.sendAdbCommand(cmd, timeout=1*len(safe_message)) )
 
 
-    @_checker.checkable
+    @adbCheckable
     def _deleteLetter(self) -> bool:
         return bool(self.sendAdbCommand(f'input keyevent KEYCODE_DEL'))
 
-    @_checker.checkable
+    @adbCheckable
     def deleteText(self, length: int=1, fast: bool=False, sec: float=0.5) -> bool:
         """ Deleting all text from the text field (by length in slow mode and using sec attribute in fast mode). """
         # going to the end of the text
@@ -235,7 +244,7 @@ class AdbClient:
 
 # ADB HUB API
 class Manager:
-    def __init__(self, api: str, timeout: float=2, checker: Optional[type(Checker)] = None) -> None:
+    def __init__(self, api: str, timeout: float=2, checker: Optional[type(AdbChecker)] = None) -> None:
         self.api = api
         self._timeout = timeout
         self.apiConnector = ApiConnector(api, timeout=self._timeout)

@@ -1,8 +1,10 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from core.meta.core_configurator import CoreConfigurator
 from core.logger import Logger
+from core.middleware.adb_checker import AdbChecker
 from core.service import IService, Service
 from core.meta.exceptions import *
 from core.global_service_queue import GlobalServiceManager
@@ -69,6 +71,9 @@ class Core(ICore):
         self.__isInitialized: bool = False
         self.__isConfigured: bool = False
         self._isStarted: bool = False
+
+        # core objects (for inner attributes config etc)
+        self._adbChecker: Optional[AdbChecker] = None  # will be given to every AdbManager
 
     @property
     def ready(self):
@@ -157,7 +162,10 @@ class Core(ICore):
 
         # fill out HUBS TABLE and SERVICES TABLE
         for adbHubRecord in self._adbHubManager.getAll():
-            adbManager = AdbManager(adbHubRecord.apiLink, timeout=self._configurator.hub_response_timeout)
+            adbManager = AdbManager(
+                adbHubRecord.apiLink, timeout=self._configurator.hub_response_timeout,
+                checker=self._adbChecker
+            )
 
             if not self.loadAdbHub(adbManager):
                 continue # skip this hub

@@ -2,6 +2,7 @@ import json
 import os
 from typing import Optional
 
+from core.hardware import AdbClient
 from meta.singleton import Singleton
 from core.meta.exceptions import IncorrectConfigsFormat, CoreIsNotInitialized
 from core.meta.core_configurator import CoreConfigurator
@@ -37,6 +38,9 @@ class Loader(metaclass=Singleton):
 
         logger.info('Core loaded. Ready to start.')
 
+    @coreAdbChecker.setter
+    def coreAdbChecker(self, adbChecker: AdbClient):
+        pass
 
     @property
     def core(self) -> Core: return self.__core
@@ -58,3 +62,5 @@ class Loader(metaclass=Singleton):
         return CoreConfigurator(**configs)
 
 
+    def _add_checker(self):
+        pass
