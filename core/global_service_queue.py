@@ -437,7 +437,8 @@ class GlobalServiceManager:
             if not connection.poll(timeout=timeout):
                 logger.warning(f'Worker {_id} did not respond to {call} within {timeout}s')
                 raise BrokenPipeError
-            fb, data = connection.recv()
+            with self._globalGSMLock:
+                fb, data = connection.recv()
 
             if fb == WorkerStatus.OK_STATUS:
                 logger.debug(f'Successfully worker call. ID: {_id}, Call: {call}, Args count: {len(args)}.')
