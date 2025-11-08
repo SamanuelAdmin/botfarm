@@ -1,3 +1,4 @@
+import _pickle
 import enum
 import os
 import sys
@@ -435,6 +436,8 @@ class GlobalServiceManager:
                 return fb, data
         except (BrokenPipeError, OSError, EOFError, ValueError) as error:
             logger.error(f'{_id} did not respond to {call} - finished with error: {error}')
+        except _pickle.UnpicklingError as error:
+            logger.error(f'Cannot receive response from {_id} to the {call} - finished with error: {error}')
         return None
 
 
@@ -581,6 +584,53 @@ class GlobalServiceManager:
         return self._serviceHistoryBuffer.pop(service.id, None)
 
 
+    def _createWorker(self) -> str:
+        """
+            Create a new worker and add worker`s connections to the tables.
+            Returns new worker id.
+        """
+
+        worker = Worker()
+
+        # create worker`s connection
+        # parentPipe - for GSM, childPipe - for worker
+        controlParentPipe, controlChildPipe = multiprocessing.Pipe()
+        self._workersConnections[worker.id] = controlParentPipe
+
+        # new connection for logs
+        logsParentPipe, logsChildPipe = multiprocessing.Pipe()
+        self._workersLogsConnections[worker.id] = logsParentPipe
+
+        # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
+        workerProcess = self._context.Process(
+            target=worker.start,
+            args=(controlChildPipe, self._workersEventsQueue, logsChildPipe),
+            name=f"{worker.workerPrefix}_{worker.id}"
+        )
+        self._workersProcesses[worker.id] = workerProcess
+        workerProcess.start()
+        logger.debug(f'Starting worker {worker.id}...')
+
+        return worker.id
+
+
+    def _postLoading(self) -> None:
+        """
+            Starting necessary modules immediately after the load
+            and wait until all system will be started.
+        """
+        logger.debug(f'Starting logs handler.')
+        threading.Thread(target=self._logsHandler, daemon=True, name="GSM-LogsHandler").start()
+        logger.debug(f'Starting events processor.')
+        threading.Thread(target=self._eventsProcessor, daemon=True, name="GSM-EventProcessor").start()
+
+        # waiting for all workers to avoid "pipe has not been loaded yet" problems
+        # and to don't lose data (like services which you need to add)
+        logger.debug(f'Waiting for {len(self._workersProcesses.keys())} workers to start.')
+        while len(self._workersProcesses.keys()) != len(self._startedWorkers):
+            time.sleep(self._logsHandlerDelay)
+
+
     def load(self) -> None:
         """
             Manage all workers, create and start them.
@@ -597,42 +647,14 @@ class GlobalServiceManager:
 
 
         for _ in range(self._max_units):
-            worker = Worker()
-
-            # create worker`s connection
-            # parentPipe - for GSM, childPipe - for worker
-            controlParentPipe, controlChildPipe = multiprocessing.Pipe()
-            self._workersConnections[worker.id] = controlParentPipe
-
-            # new connection for logs
-            logsParentPipe, logsChildPipe = multiprocessing.Pipe()
-            self._workersLogsConnections[worker.id] = logsParentPipe
-
-            # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
-            workerProcess = self._context.Process(
-                target=worker.start,
-                args=(controlChildPipe, self._workersEventsQueue, logsChildPipe),
-                name=f"{worker.workerPrefix}_{worker.id}"
-            )
-            self._workersProcesses[worker.id] = workerProcess
-            workerProcess.start()
-            logger.debug(f'Starting worker {worker.id}...')
+            self._createWorker()
 
 
         logger.info('Global service manager started.')
         self._isLoaded = True
 
         # post loading
-        logger.debug(f'Starting logs handler.')
-        threading.Thread(target=self._logsHandler, daemon=True, name="GSM-LogsHandler").start()
-        logger.debug(f'Starting events processor.')
-        threading.Thread(target=self._eventsProcessor, daemon=True, name="GSM-EventProcessor").start()
-
-        # waiting for all workers to avoid "pipe has not been loaded yet" problems
-        # and to don't lose data (like services which you need to add)
-        logger.debug(f'Waiting for {len(self._workersProcesses.keys())} workers to start.')
-        while len(self._workersProcesses.keys()) != len(self._startedWorkers):
-            time.sleep(self._logsHandlerDelay)
+        self._postLoading()
 
 
     @afterLoad
