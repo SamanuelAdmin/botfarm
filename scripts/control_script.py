@@ -75,11 +75,15 @@ def _parseAccounts(adb: AdbClient, adbAuto: AdbAutomatization, dump: str) -> lis
 
     for accountSection in accountsSection.find_all('node'):
         try:
-            activeAccount = accountSection.node.node \
-                .find(attrs={'index': "1"}).get('text')
-            if activeAccount and ' ' not in activeAccount:
+            activeAccount = accountSection.node.get('content-desc').split(',')[0]
+            # last two fields
+            if activeAccount and \
+                activeAccount not in ('Meta logo', 'Go to Accounts Center', 'Add Instagram account'):
                 activeAccounts.append(activeAccount)
         except (AttributeError, ValueError): continue
+
+    if len(activeAccounts) == 0:
+        logger.error(adb.serial, dump)
 
     return activeAccounts
 

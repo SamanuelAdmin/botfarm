@@ -89,6 +89,12 @@ class Core(ICore):
         """
         return list(self._services.keys())
 
+    @property
+    def adbChecker(self) -> None: return self._adbChecker
+
+    @adbChecker.setter
+    def adbChecker(self, newAdbChecker: AdbChecker):
+        self._adbChecker = newAdbChecker
 
 
     def _createServices(self, hubUUID: str) -> int:

@@ -81,10 +81,13 @@ def main():
         configFileName='core_configs.json',
         configPath=os.path.dirname(__file__),
     )
-    # post configs
-    WaitingAdbChecker.config(connectionCheckFunction)
-    loader.coreAdbChecker = WaitingAdbChecker
 
+    # pre configs
+    WaitingAdbChecker.config(connectionCheckFunction)
+    loader.setAdbChecker(WaitingAdbChecker)
+
+    # main loading part
+    loader.load()
     core = loader.core
     core.start()
 
@@ -93,6 +96,8 @@ def main():
     dispatcher.load()
     dispatcher.handler()
 
+    # core.addServiceTask('988e9034574a4d5831@3c067526', parseActiveAccounts)
+    # core.processService('988e9034574a4d5831@3c067526')
 
 
 if __name__ == "__main__": main()

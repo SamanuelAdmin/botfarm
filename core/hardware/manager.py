@@ -34,7 +34,7 @@ class AdbClient:
         self.deviceLink = deviceLinkPattern.format(serial)
         # phone`s clipboard API, can be used from "outside"
         self._bufferProcessor = None
-        self._checker = checker(self) if checker else BaseAdbChecker(self)
+        self._checker = checker() if checker else BaseAdbChecker()
 
     @property
     def checker(self):

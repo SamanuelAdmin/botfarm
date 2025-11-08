@@ -3,6 +3,7 @@ import os
 from typing import Optional
 
 from core.hardware import AdbClient
+from core.middleware.adb_checker import AdbChecker
 from meta.singleton import Singleton
 from core.meta.exceptions import IncorrectConfigsFormat, CoreIsNotInitialized
 from core.meta.core_configurator import CoreConfigurator
@@ -20,14 +21,19 @@ class Loader(metaclass=Singleton):
         Configs accept only in JSON format!
     '''
 
+    _configurator: CoreConfigurator
+    __core: Core
+
     def __init__(self, configFileName: str = 'core_configs.json', configPath: Optional[str] = None):
         self.configFileName = configFileName
         self.configFilePath = os.path.dirname(__file__) if not configPath else configPath
         self.configFullPath = os.path.join(self.configFilePath, self.configFileName)
 
         self._configurator: CoreConfigurator = self._loadConfigsFromFile()
-
         self.__core = Core()
+
+    def load(self):
+
         logger.info('Configuring core...')
         self.__core.configure(self._configurator)
 
@@ -38,9 +44,10 @@ class Loader(metaclass=Singleton):
 
         logger.info('Core loaded. Ready to start.')
 
-    @coreAdbChecker.setter
-    def coreAdbChecker(self, adbChecker: AdbClient):
-        pass
+
+    def setAdbChecker(self, adbChecker: type(AdbChecker)) -> None:
+        self.__core.adbChecker = adbChecker
+
 
     @property
     def core(self) -> Core: return self.__core

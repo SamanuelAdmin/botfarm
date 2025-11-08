@@ -5,6 +5,7 @@ from typing import Callable, Any, Optional
 
 
 
+
 class AdbChecker(ABC):
     """
         Abstract class for all pre action checkers.
@@ -14,12 +15,11 @@ class AdbChecker(ABC):
         This method will be processed after object initialization.
     """
 
-    def __init__(self, adb):
-        """ :param adb: AdbClient instance. """
-        self.adb = adb
-        self.init()
+    def __init__(self):
+        # Args and kwargs buffers for check functions
         self.adbArgs: tuple = ()
         self.adbKwargs: dict[str, Any] = {}
+        self.init()
 
     def init(self, *args, **kwargs) -> None:
         """ Unnecessary method, if you need more initialization arguments or attributes. """
@@ -44,11 +44,10 @@ def adbCheckable(function: Callable) -> Callable:
         Function will be processed if check function returns True.
     """
 
-
     @wraps(function)
     def wrapper(adbClient, *args, **kwargs) -> Any:
         checker = adbClient.checker
-        checkingResult = checker.check(checker.adb, *checker.adbArgs, **checker.adbKwargs)
+        checkingResult = checker.check(adbClient, *checker.adbArgs, **checker.adbKwargs)
         if not checkingResult: return checkingResult
 
         return function(adbClient, *args, **kwargs)
@@ -74,11 +73,11 @@ class WaitingAdbChecker(AdbChecker):
         Waiter function needs to return bool and take adb client object.
     """
 
-    waiterFunction: Optional[Callable[[Any], bool]]
+    waiterFunction: Optional[Callable[[...], bool]]
     delay: int = 1
 
     @classmethod
-    def config(cls, waiterFunction: Callable[[Any], bool], delay: int=1) -> None:
+    def config(cls, waiterFunction: Callable[[...], bool], delay: int=1) -> None:
         cls.waiterFunction = waiterFunction
         cls.delay = delay
 
