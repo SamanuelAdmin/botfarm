@@ -98,9 +98,6 @@ class Worker:
         self._id: str = str(uuid.uuid4())
         self._customStdout: IStdout
 
-        # pipe for sending logs to GSM logs handler
-        self._logsPipe: Connection
-
         # iterator lifetime controller. Turn it on while starting and turn off with deleting worker.
         # DO NOT TOUCH NOWHERE EXCEPT THAT
         self._isAlive: bool = False
@@ -115,6 +112,9 @@ class Worker:
         # MUST BE QUEUE - safer and faster
         self._eventsPipe: Optional[multiprocessing.Queue] = None  # stdout analog (gives events messages)
         self._logsPipe: Optional[Connection] = None    # stderr analog (for any logs, LOGS ONLY)
+
+        # main locker for entire worker blocking (pipes work)
+        self._locker = threading.Lock()
 
 
     def __del__(self):
@@ -145,7 +145,9 @@ class Worker:
             self._sendLog( ('info', 'Worker started') )
         """
 
-        try: self._logsPipe.send((_type, f'{self._loggerPrefix} {info}'))
+        try:
+            with self._locker:
+                self._logsPipe.send((_type, f'{self._loggerPrefix} {info}'))
         except (BrokenPipeError, OSError) as error: pass
 
     def _sendCaughtLog(self, text: str) -> None:
@@ -165,10 +167,11 @@ class Worker:
         """
 
         try:
-            # ALERT! Can raise queue.Full!!!
-            self._eventsPipe.put_nowait(
-                WorkerEvent( workerId=self._id, type=_type, serviceId=serviceId, context=context )
-            )
+            with self._locker:
+                # ALERT! Can raise queue.Full!!!
+                self._eventsPipe.put_nowait(
+                    WorkerEvent( workerId=self._id, type=_type, serviceId=serviceId, context=context )
+                )
         except (BrokenPipeError, OSError) as error: pass
 
 
@@ -183,11 +186,14 @@ class Worker:
         self._sendLog('debug','All services killed.')
 
         try:
-            self._controlPipe.send((WorkerStatus.OK_STATUS, []))
-            # waiting for send finish
-            time.sleep(self._iteratorDelay * 10)
-            self._controlPipe.close()
-            self._sendLog('debug', 'Pipe closed.')
+            with self._locker:
+                self._controlPipe.send((WorkerStatus.OK_STATUS, []))
+                # waiting for send finish
+                time.sleep(self._iteratorDelay * 10)
+                self._controlPipe.close()
+                self._sendLog('debug', 'Pipe closed.')
+                self._logsPipe.close()
+                self._eventsPipe.close()
         except (BrokenPipeError, OSError) as error:
             self._sendLog('debug', f'Cannot close pipe. {error}')
 
@@ -270,7 +276,9 @@ class Worker:
 
 
     def _sendToPipe(self, data: Any) -> None:
-        try: self._controlPipe.send(data)
+        try:
+            with self._locker:
+                self._controlPipe.send(data)
         except (BrokenPipeError, OSError, EOFError): self._del()
 
 
@@ -408,7 +416,7 @@ class GlobalServiceManager:
     @property
     @afterLoad
     def processingServices(self) -> list[str]:
-        """ Returns services id of  """
+        """ Returns services id which are processing now """
         return list(self._processingServices.keys())
 
     @property
@@ -417,7 +425,7 @@ class GlobalServiceManager:
 
 
     @afterLoad
-    def _workerCall(self, _id: str, call: str, *args: Any) -> Optional[tuple[int, list[Any]]]:
+    def _workerCall(self, _id: str, call: str, *args: Any, timeout: int=5) -> Optional[tuple[int, list[Any]]]:
         connection = self._workersConnections.get(_id)
         if not connection: raise NotFoundException('Connection not found.')
         if call not in WorkerCall._value2member_map_: raise NotFoundException('Call name not found.')
@@ -426,8 +434,8 @@ class GlobalServiceManager:
             connection.send((call, args))
 
             # receiving data
-            if not connection.poll(timeout=5):
-                logger.warning(f'Worker {_id} did not respond to {call} within 1s')
+            if not connection.poll(timeout=timeout):
+                logger.warning(f'Worker {_id} did not respond to {call} within {timeout}s')
                 raise BrokenPipeError
             fb, data = connection.recv()
 
