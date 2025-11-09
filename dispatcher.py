@@ -2,6 +2,7 @@ import copy
 import threading
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from core.core import Core
 from core.middleware.decorators import afterLoad, ADB_SCRIPT_CONTRACT
@@ -38,6 +39,7 @@ class Dispatcher:
     """
 
     def __init__(self, core: Core, panelManager: PanelManager, orderProcessorDelay: int=1):
+        self._meta = self._Meta() # meta information
         self._core: Core = core
         self._panelManager: PanelManager = panelManager
 
@@ -54,6 +56,25 @@ class Dispatcher:
         self._sellingScripts: dict[int, ADB_SCRIPT_CONTRACT] = {
             9216: likePost,
             9217: followAccount
+        }
+
+    @dataclass
+    class _Meta:
+        """
+            All "state" variables. For logs only.
+            Use snake_case to name them all.
+        """
+        total_services: int = 0
+        loaded_services: int = 0
+        loaded_accounts: int = 0
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        """
+            Get meta information in dict format ["variable_name", value]
+        """
+        return {
+            var: value for var, value in self._meta.__dataclass_fields__.items()
         }
 
 
@@ -96,6 +117,9 @@ class Dispatcher:
                 accountUsername=username, serviceId=serviceId, busy=False
             ) for username in data[0].result
         ]
+        self._meta.loaded_services += 1
+        self._meta.loaded_accounts += len(data[0].result)
+        logger.debug(f'Finished loading service {serviceId}. Loaded {self._meta.loaded_services}/{self._meta.total_services}')
 
 
     def load(self):
@@ -112,7 +136,10 @@ class Dispatcher:
             for serviceId in self._core.servicesTable
         ]
 
-        logger.info('Starting all threads to process services...')
+        # updating meta with current service info
+        self._meta.total_services += len(threads)
+
+        logger.info(f'Starting all threads [{len(threads)}] to process services...')
         for thread in threads: thread.start()
         time.sleep(self._orderProcessorDelay * 5) # small delay to start all threads
         for thread in threads: thread.join()

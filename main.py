@@ -1,10 +1,8 @@
 import multiprocessing
-import time
-from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
 
-from core.dispatcher import Dispatcher
+from dispatcher import Dispatcher
 from core.middleware.adb_checker import WaitingAdbChecker
 from meta.connection_check_function import connectionCheckFunction
 from services.db_services.order_manager import OrderManager
@@ -13,15 +11,10 @@ from services.panel_manager.manager import PanelManager
 load_dotenv()
 import os, sys
 
-from scripts import debug_functions
 # need to create_all! delete after adding migrations
 from core.loader import Loader
-from core.logger import Logger, setup_default_logger
+from core.logger import setup_default_logger
 
-from scripts import debug_functions
-from scripts.login_script import loginScript
-from scripts.selling_services_scripts import *
-from scripts.edit_profile_info import editProfileInfoScript
 from scripts.control_script import *
 
 
