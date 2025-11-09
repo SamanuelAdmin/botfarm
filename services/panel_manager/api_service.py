@@ -81,7 +81,15 @@ class PanelApiService:
             PanelApiMethods.GET, '', {'sort': 'date-desc'}
         )
         return self._getJson(res)
-    
+
+    def setOrderStatus(self, status: OrderStatus, ids: list[int]) -> ResposneJson:
+        """
+            Set status for orders
+        """
+        res = self._requestApi(
+            PanelApiMethods.POST, 'change-status', {'ids': ids, 'status': status.value}
+        )
+        return self._getJson(res)
 
 
 
