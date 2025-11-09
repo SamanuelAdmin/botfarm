@@ -1,11 +1,15 @@
 from datetime import datetime
 
-from services.panel_manager.models import OrderData
+from services.panel_manager.models import OrderData, ResponseJson
 from meta.exceptions import ValidateJsonError
 
     
 class PanelParserService:
     """Parse a json from Panel Api"""
+    @staticmethod
+    def parseResponseJson(responseJson: dict) -> ResponseJson:
+        return ResponseJson.model_validate(responseJson)
+
     def _parseOrderJson(self, order: dict) -> OrderData:
         return OrderData(
             id=order['id'],
@@ -19,10 +23,10 @@ class PanelParserService:
             status=order['status']
         )
 
-    def parseOrdersJson(self, apiJson: dict) -> list[OrderData]:
+    def parseOrdersJson(self, responseJson: ResponseJson) -> list[OrderData]:
         """Parses json orders"""
         try:
-            orders: list[dict] = apiJson['data']['list']
+            orders: list[dict] = responseJson.data['list']
             orders_data = []
             for order in orders:
                 orders_data.append(
