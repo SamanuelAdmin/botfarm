@@ -22,6 +22,7 @@ from meta.stdout import IStdout
 
 logger = Logger()
 
+
 class WorkerStdout(IStdout):
     """
         Catching all worker`s (script`s) logs from stdout
@@ -174,6 +175,13 @@ class Worker:
                 )
         except (BrokenPipeError, OSError) as error: pass
 
+    def _sendToPipe(self, data: Any) -> None:
+        try:
+            with self._locker:
+                self._controlPipe.send(data)
+        except (BrokenPipeError, OSError, EOFError): self._del()
+
+
 
     def _del(self) -> None:
         """
@@ -275,13 +283,6 @@ class Worker:
         except (BrokenPipeError, OSError, EOFError): self._del()
 
 
-    def _sendToPipe(self, data: Any) -> None:
-        try:
-            with self._locker:
-                self._controlPipe.send(data)
-        except (BrokenPipeError, OSError, EOFError): self._del()
-
-
     def _killService(self, service: IService) -> None:
         # sending event with all service history
         serviceHistory = [h for h in service.history()]
@@ -371,11 +372,12 @@ class GlobalServiceManager:
 
     __metaclass__ = Singleton
 
-    def __init__(self, max_units: int, eventsProcessorDelay: float=0.05, logsHandlerDelay: float=1):
+    def __init__(self, max_units: int, eventsProcessorDelay: int=1, logsHandlerDelay: float=1):
         # changing process creating method
         self._context = multiprocessing.get_context("fork")
         self._max_units = max_units
-        self._eventsProcessorDelay = eventsProcessorDelay
+        # time, which events processor needs to check all workers queues, IN SECONDS, MIN - 1
+        self._eventsProcessorDelay = eventsProcessorDelay if eventsProcessorDelay > 0 else 1
         self._logsHandlerDelay = logsHandlerDelay
         self._isLoaded = False
         self._isAlive = True # DO NOT TOUCH IF YOU DONG KNOW WHAT YOU'RE DOING
@@ -390,14 +392,17 @@ class GlobalServiceManager:
         # contains workers pipes, which are used to make workers calls
         self._workersConnections: dict[str, Connection] = {}
         self._workersLogsConnections: dict[str, Connection] = {}
-        self._workersEventsQueue: multiprocessing.Queue = multiprocessing.Queue() # faster and safer as raw Pipes
+        self._workersEventsQueues: dict[str, multiprocessing.Queue] = {} # faster and safer as raw Pipes
         # started workers, contains already started and working worker's ids
         # use it in post load to wait for all workers
         self._startedWorkers: list[str] = []
         # you need to fill it only once - after workers creation
         self._workersLoadTable: dict[str, int] = {} # table for getting worker`s loading fast and secure
 
+        # lockers
         self._globalGSMLock: threading.Lock = threading.Lock()
+        self._eventsProcessorLock: threading.Lock = threading.Lock()
+        self._workersLocks: dict[str, threading.Lock] = {} # locker for worker`s control pipe
 
         # table with all workers processes
         # use it to save and terminate processes
@@ -430,14 +435,17 @@ class GlobalServiceManager:
         if not connection: raise NotFoundException('Connection not found.')
         if call not in WorkerCall._value2member_map_: raise NotFoundException('Call name not found.')
 
+        lock = self._workersLocks.get(_id)
+
         try:
-            connection.send((call, args))
+            with lock: connection.send((call, args))
 
             # receiving data
             if not connection.poll(timeout=timeout):
                 logger.warning(f'Worker {_id} did not respond to {call} within {timeout}s')
                 raise BrokenPipeError
-            fb, data = connection.recv()
+
+            with lock: fb, data = connection.recv()
 
             if fb == WorkerStatus.OK_STATUS:
                 logger.debug(f'Successfully worker call. ID: {_id}, Call: {call}, Args count: {len(args)}.')
@@ -483,7 +491,7 @@ class GlobalServiceManager:
             This function must be fast as hell.
         """
 
-        with self._globalGSMLock:
+        with self._eventsProcessorLock:
             match event.type:
                 case WorkerEventTypes.WORKER_STOPPED:
                     process = self._workersProcesses.pop(event.workerId, None)
@@ -506,18 +514,26 @@ class GlobalServiceManager:
     def _eventsProcessor(self) -> None:
         """
             Catch and process every worker`s event.
+            Uses self._eventsProcessorDelay!
+            self._eventsProcessorDelay must be in seconds, to avoid system`s stuck.
         """
 
-        while self._isAlive:
-            try:
-                self._processEvent(
-                    self._workersEventsQueue.get(timeout=self._eventsProcessorDelay)
-                )
-            except Empty: continue
-            except (BrokenPipeError, OSError, EOFError) as e:
-                logger.error(f'Events processor crushed with {e}.')
-                break
+        crushList = [] # list with id`s of crashed workers
+        assert self._eventsProcessorDelay >= 1
 
+        while self._isAlive:
+            # check all queues for all workers, not only one
+            for workerId, queue in self._workersEventsQueues.items():
+                if workerId in crushList: continue
+
+                try:
+                    self._processEvent( queue.get_nowait() )
+                except Empty: continue
+                except (BrokenPipeError, OSError, EOFError) as e:
+                    logger.error(f'Events processor of {workerId} crushed with {e}.')
+                    crushList.append(workerId)
+
+            time.sleep(self._eventsProcessorDelay)
 
 
     @afterLoad
@@ -602,22 +618,27 @@ class GlobalServiceManager:
 
         # create worker`s connection
         # parentPipe - for GSM, childPipe - for worker
-        controlParentPipe, controlChildPipe = multiprocessing.Pipe()
+        controlParentPipe, controlChildPipe = self._context.Pipe()
         self._workersConnections[worker.id] = controlParentPipe
 
         # new connection for logs
-        logsParentPipe, logsChildPipe = multiprocessing.Pipe()
+        logsParentPipe, logsChildPipe = self._context.Pipe()
         self._workersLogsConnections[worker.id] = logsParentPipe
+
+        eventsQueue = self._context.Queue()
+        self._workersEventsQueues[worker.id] = eventsQueue
+
+        workerLock = threading.Lock()
+        self._workersLocks[worker.id] = workerLock
 
         # DO NOT USE DAEMON PROCESSES WITH FORK CONTEXT - YOU CANNOT USE ASYNC WITH THEM
         workerProcess = self._context.Process(
             target=worker.start,
-            args=(controlChildPipe, self._workersEventsQueue, logsChildPipe),
+            args=(controlChildPipe, eventsQueue, logsChildPipe),
             name=f"{worker.workerPrefix}_{worker.id}"
         )
         self._workersProcesses[worker.id] = workerProcess
         workerProcess.start()
-        logger.debug(f'Starting worker {worker.id}...')
 
         return worker.id
 
@@ -656,7 +677,6 @@ class GlobalServiceManager:
 
         for _ in range(self._max_units):
             self._createWorker()
-
 
         logger.info('Global service manager started.')
         self._isLoaded = True
