@@ -7,7 +7,7 @@ from services.panel_manager.enums import PanelApiMethods
 
 from typing import Any, Optional
 
-from services.panel_manager.models import ResposneJson
+from services.panel_manager.models import ResponseJson
 from services.panel_manager.parser_service import PanelParserService
 
 
@@ -18,7 +18,7 @@ class PanelApiService:
         }
         self._apiBaseUrl = 'https://thepanel.top/adminapi/v2/orders/'
 
-    def _getJson(self, response: requests.Response) -> ResposneJson:
+    def _getJson(self, response: requests.Response) -> ResponseJson:
         try:
             return self._checkErrors(
                 response.json()
@@ -50,17 +50,17 @@ class PanelApiService:
 
         return res
 
-    def _checkErrors(self, json: dict) -> ResposneJson:
+    def _checkErrors(self, json: dict) -> ResponseJson:
         responseJson = PanelParserService.parseResponseJson(json)
         if responseJson.error_code > 0:
             raise PanelApiServiceError(responseJson.error_message)
         return responseJson
 
-    def getOrdersJson(self) -> ResposneJson:
+    def getOrdersJson(self) -> ResponseJson:
         res = self._requestApi(PanelApiMethods.GET, '')
         return self._getJson(res)
 
-    def getOrdersJsonCreatedFrom(self, createdFrom: Optional[float]) -> ResposneJson:
+    def getOrdersJsonCreatedFrom(self, createdFrom: Optional[float]) -> ResponseJson:
         """
             Order creation UNIX timestamp (lower bound).
             Sorting: "sort": "date-asc"
@@ -73,7 +73,7 @@ class PanelApiService:
         res = self._requestApi( PanelApiMethods.GET, '', queryParams )
         return self._getJson(res)
 
-    def getSortedOrders(self) -> ResposneJson:
+    def getSortedOrders(self) -> ResponseJson:
         """
             Gets sorted list by date-desc
         """
@@ -82,7 +82,7 @@ class PanelApiService:
         )
         return self._getJson(res)
 
-    def setOrderStatus(self, status: OrderStatus, ids: list[int]) -> ResposneJson:
+    def setOrderStatus(self, status: OrderStatus, ids: list[int]) -> ResponseJson:
         """
             Set status for orders
         """

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from services.panel_manager.models import OrderData, ResponseJson
+from services.panel_manager.models import OrderData, OrderJson, ResponseJson
 from meta.exceptions import ValidateJsonError
 
     
@@ -10,27 +10,35 @@ class PanelParserService:
     def parseResponseJson(responseJson: dict) -> ResponseJson:
         return ResponseJson.model_validate(responseJson)
 
-    def _parseOrderJson(self, order: dict) -> OrderData:
+    def _validateOrdersJson(self, responseJson: ResponseJson) -> list[OrderJson]:
+        try:
+            return [
+                OrderJson.model_validate(order) for order in responseJson.data['list']
+            ]
+        except KeyError:
+            raise ValidateJsonError('Does not exist key "list" in json!')
+
+    def _parseOrderJsonToOrderData(self, order: OrderJson) -> OrderData:
         return OrderData(
-            id=order['id'],
-            price=order['charge']['value'],
-            link=order['link'],
-            quantity=order['quantity'],
-            service_id=order['service_id'],
-            service_type=order['service_type'],
-            created_date=datetime.strptime(order['created'], '%Y-%m-%d %H:%M:%S'),
-            created_timestamp=order['created_timestamp'],
-            status=order['status']
+            id=order.id,
+            price=float(order.charge.value),
+            link=order.link,
+            quantity=order.quantity,
+            service_id=order.service_id,
+            service_type=order.service_type,
+            created_date=order.created_date,
+            created_timestamp=order.created_timestamp,
+            status=order.status
         )
 
     def parseOrdersJson(self, responseJson: ResponseJson) -> list[OrderData]:
         """Parses json orders"""
         try:
-            orders: list[dict] = responseJson.data['list']
+            orders: list[OrderJson] = self._validateOrdersJson(responseJson)
             orders_data = []
             for order in orders:
                 orders_data.append(
-                    self._parseOrderJson(order)
+                    self._parseOrderJsonToOrderData(order)
                 )
             return orders_data
         except KeyError:
