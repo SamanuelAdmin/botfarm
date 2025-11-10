@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel
 
 from meta.enums import OrderStatus
 
@@ -20,5 +23,10 @@ class OrderData:
 class OrderUpdateData:
     id: int
     status: OrderStatus
+
+class ResponseJson(BaseModel):
+    data: dict[str, Any]
+    error_message: str
+    error_code: int
 
     

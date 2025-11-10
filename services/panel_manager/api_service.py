@@ -1,10 +1,14 @@
 import requests
 import json
 
+from meta.enums import OrderStatus
 from meta.exceptions import PanelApiServiceError, UnknownMethodError
 from services.panel_manager.enums import PanelApiMethods
 
 from typing import Any, Optional
+
+from services.panel_manager.models import ResposneJson
+from services.panel_manager.parser_service import PanelParserService
 
 
 class PanelApiService:
@@ -14,9 +18,11 @@ class PanelApiService:
         }
         self._apiBaseUrl = 'https://thepanel.top/adminapi/v2/orders/'
 
-    def _getJson(self, response: requests.Response) -> dict:
+    def _getJson(self, response: requests.Response) -> ResposneJson:
         try:
-            return response.json()
+            return self._checkErrors(
+                response.json()
+            )
         except json.JSONDecodeError as e:
             raise PanelApiServiceError(f"Could not get the response. {e}")
 
@@ -44,11 +50,17 @@ class PanelApiService:
 
         return res
 
-    def getOrdersJson(self) -> dict:
+    def _checkErrors(self, json: dict) -> ResposneJson:
+        responseJson = PanelParserService.parseResponseJson(json)
+        if responseJson.error_code > 0:
+            raise PanelApiServiceError(responseJson.error_message)
+        return responseJson
+
+    def getOrdersJson(self) -> ResposneJson:
         res = self._requestApi(PanelApiMethods.GET, '')
         return self._getJson(res)
 
-    def getOrdersJsonCreatedFrom(self, createdFrom: Optional[float]) -> dict:
+    def getOrdersJsonCreatedFrom(self, createdFrom: Optional[float]) -> ResposneJson:
         """
             Order creation UNIX timestamp (lower bound).
             Sorting: "sort": "date-asc"
@@ -61,7 +73,7 @@ class PanelApiService:
         res = self._requestApi( PanelApiMethods.GET, '', queryParams )
         return self._getJson(res)
 
-    def getSortedOrders(self) -> dict:
+    def getSortedOrders(self) -> ResposneJson:
         """
             Gets sorted list by date-desc
         """
@@ -69,7 +81,15 @@ class PanelApiService:
             PanelApiMethods.GET, '', {'sort': 'date-desc'}
         )
         return self._getJson(res)
-    
+
+    def setOrderStatus(self, status: OrderStatus, ids: list[int]) -> ResposneJson:
+        """
+            Set status for orders
+        """
+        res = self._requestApi(
+            PanelApiMethods.POST, 'change-status', {'ids': ids, 'status': status.value}
+        )
+        return self._getJson(res)
 
 
 

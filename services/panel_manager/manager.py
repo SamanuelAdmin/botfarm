@@ -1,10 +1,11 @@
 import time
 
+from meta.enums import OrderStatus
 from meta.exceptions import NoLastOrder
 
 from services.db_services.order_manager import OrderManager
 from services.panel_manager.api_service import PanelApiService
-from services.panel_manager.models import OrderData
+from services.panel_manager.models import OrderData, OrderUpdateData
 from services.panel_manager.parser_service import PanelParserService
 
 
@@ -19,6 +20,17 @@ class PanelManager:
         self._apiService = PanelApiService(apiKey)
         self._orderManager = orderManager
         self._parserState = False
+
+    def changeOrderStatus(self, status: OrderStatus, ids: list[int]) -> None:
+        """
+            Change status for every order by id from ids list
+        """
+        self._apiService.setOrderStatus(status, ids)
+        for id in ids:
+            self._orderManager.updateOrder(
+                OrderUpdateData(id=id, status=status)
+            )
+
 
     def getFirstOrder(self) -> None:
         api_json = self._apiService.getSortedOrders()
@@ -49,7 +61,6 @@ class PanelManager:
     def saveOrder(self, order: OrderData) -> None:
         self._orderManager.createOrder(order)
 
-    
     def startParse(self, parsingDelay: int = 15, do_not_use_in_production: bool = False) -> None:
         """
             Test method, this functions will be in the order`s dispatcher.
@@ -71,7 +82,11 @@ class PanelManager:
 
             for order in new_orders:
                 self.saveOrder(order)
-                print(f"New order: {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')} | {order.link} | {order.price} | {order.quantity}")
+                print(
+                    f"New order:"
+                    f" {order.service_type} | {order.created_date.strftime('%y-%m-%d %H:%M:%S')}"
+                    f" | {order.link} | {order.price} | {order.quantity}"
+                )
 
             time.sleep(parsingDelay)
 
